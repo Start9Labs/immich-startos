@@ -6,14 +6,16 @@ import {
   withTempApiKey,
   immichApi,
 } from '../utils'
+import { i18n } from '../i18n'
 
 export const resetAdminPassword = sdk.Action.withoutInput(
   'reset-admin-password',
 
   async ({ effects }) => ({
-    name: 'Reset Admin Password',
-    description:
+    name: i18n('Reset Admin Password'),
+    description: i18n(
       'Reset the admin password to a new randomly generated password',
+    ),
     warning: null,
     allowedStatuses: 'only-running',
     group: null,
@@ -46,11 +48,11 @@ export const resetAdminPassword = sdk.Action.withoutInput(
 
     return {
       version: '1',
-      title: 'Password Reset',
-      message: 'The admin password has been reset',
+      title: i18n('Password Reset'),
+      message: i18n('The admin password has been reset'),
       result: {
         type: 'single',
-        name: 'New Password',
+        name: i18n('New Password'),
         description: null,
         value: newPassword,
         masked: true,

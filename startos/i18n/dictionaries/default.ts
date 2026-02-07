@@ -28,6 +28,14 @@ const dict = {
   'May only contain alphanumeric characters, hyphens, and periods.': 19,
   'File Browser': 20,
   'Configure external photo libraries from Nextcloud or File Browser': 21,
+  'Manage External Libraries': 25,
+
+  // actions/resetAdminPassword.ts
+  'Reset Admin Password': 26,
+  'Reset the admin password to a new randomly generated password': 27,
+  'Password Reset': 28,
+  'The admin password has been reset': 29,
+  'New Password': 30,
 
   // actions/configureSmtp.ts
   'Configure SMTP': 22,
