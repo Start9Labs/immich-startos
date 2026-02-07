@@ -1,122 +1,261 @@
 import { sdk } from './sdk'
 import { T } from '@start9labs/start-sdk'
-import { uiPort } from './utils'
+import { i18n } from './i18n'
+import {
+  uiPort,
+  getPostgresSub,
+  getPostgresEnv,
+  getImmichEnv,
+  withTempApiKey,
+  immichApi,
+} from './utils'
+import { storeJson } from './fileModels/store.json'
+import { manifest as filebrowserManifest } from 'filebrowser-startos/startos/manifest'
+import { manifest as nextcloudManifest } from 'nextcloud-startos/startos/manifest'
 
-export const main = sdk.setupMain(async ({ effects, started }) => {
-  console.info('Starting Immich!')
+const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser'
+const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud'
 
+export const main = sdk.setupMain(async ({ effects }) => {
+  console.info(i18n('Starting Immich'))
 
-  const healthChecks: T.HealthCheck[] = []
+  const postgresEnv = await getPostgresEnv(effects)
+  const libs =
+    (await storeJson.read((s) => s.externalLibraries).const(effects)) || []
 
-  const valkey = await sdk.SubContainer.of(effects,
-    { imageId: "valkey" },
-    "valkey",
-  )
-  await valkey.exec(
-    ['sysctl', 'vm.overcommit_memory=1']
-  )
-
-  const dbEnv = {
-    POSTGRES_USER: 'postgres',
-    POSTGRES_PASSWORD: 'postgres',
-    POSTGRES_DB: 'immich',
-  }
-  const db = await sdk.SubContainer.of(effects,
-    { imageId: "db" },
-    "db"
-  )
-  await db.mount(
-    {
-      type: "volume",
-      id: "main",
-      subpath: "db",
-      readonly: false
-    },
-    "/var/lib/postgresql/data",
-  )
-  const dbMounts = sdk.Mounts.of()
-    .addVolume('main',
-      'db',
-      '/var/lib/postgresql/data',
-      false)
-
-  await db.exec(['docker-ensure-initdb.sh'], {
-    env: dbEnv,
+  // Build server mounts: always mount upload volume, conditionally mount external libraries
+  let serverMounts = sdk.Mounts.of().mountVolume({
+    volumeId: 'upload',
+    mountpoint: '/usr/src/app/upload',
+    readonly: false,
+    subpath: null,
   })
 
-  const immich = await sdk.SubContainer.of(effects,
-    { imageId: "immich" },
-    "immich"
-  )
-  immich.mount(
-    {
-      type: "assets",
-      subpath: 'immich',
-    },
-    "/assets"
-  )
-  console.debug(
-    `######### immich sc GUID: ${immich.guid}`
+  if (libs.some((l) => l.source.selection === 'filebrowser')) {
+    serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
+      dependencyId: 'filebrowser',
+      volumeId: 'data',
+      subpath: null,
+      mountpoint: FILEBROWSER_MOUNTPOINT,
+      readonly: true,
+    })
+  }
+  if (libs.some((l) => l.source.selection === 'nextcloud')) {
+    serverMounts = serverMounts.mountDependency<typeof nextcloudManifest>({
+      dependencyId: 'nextcloud',
+      volumeId: 'nextcloud',
+      subpath: null,
+      mountpoint: NEXTCLOUD_MOUNTPOINT,
+      readonly: true,
+    })
+  }
+
+  const valkeySub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'valkey' },
+    sdk.Mounts.of(),
+    'valkey',
   )
 
-  const daemons = sdk.Daemons.of(effects, started, healthChecks)
+  const postgresSub = await getPostgresSub(effects)
+
+  const mlSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'immich-ml' },
+    sdk.Mounts.of().mountVolume({
+      volumeId: 'model-cache',
+      mountpoint: '/cache',
+      readonly: false,
+      subpath: null,
+    }),
+    'immich-ml',
+  )
+
+  const serverSub = await sdk.SubContainer.of(
+    effects,
+    { imageId: 'immich-server' },
+    serverMounts,
+    'immich-server',
+  )
+
+  return sdk.Daemons.of(effects)
+    .addDaemon('postgres', {
+      subcontainer: postgresSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        env: postgresEnv,
+      },
+      ready: {
+        display: null,
+        fn: async () => {
+          const { exitCode } = await postgresSub.exec([
+            'pg_isready',
+            '-U',
+            postgresEnv.POSTGRES_USER,
+            '-h',
+            'localhost',
+          ])
+          if (exitCode !== 0) {
+            return { result: 'loading', message: null }
+          }
+          return { result: 'success', message: null }
+        },
+      },
+      requires: [],
+    })
     .addDaemon('valkey', {
-      subcontainer: valkey,
-      command: 'valkey-server',
-      mounts: sdk.Mounts.of(),
+      subcontainer: valkeySub,
+      exec: { command: 'valkey-server' },
+      ready: {
+        display: null,
+        fn: async () => {
+          const res = await valkeySub.exec(['valkey-cli', 'ping'])
+          return res.stdout.toString().trim() === 'PONG'
+            ? { message: '', result: 'success' }
+            : { message: res.stdout.toString().trim(), result: 'failure' }
+        },
+      },
+      requires: [],
+    })
+    .addDaemon('immich-ml', {
+      subcontainer: mlSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        runAsInit: true,
+      },
       ready: {
         display: null,
         fn: () =>
-          sdk.healthCheck.checkPortListening(effects, 6379, {
+          sdk.healthCheck.checkPortListening(effects, 3003, {
             successMessage: '',
-            errorMessage: ''
+            errorMessage: '',
           }),
       },
       requires: [],
     })
-    .addDaemon('db', {
-      subcontainer: { imageId: 'db' },
-      command: ["gosu", "postgres", "postgres",
-        "-c", "shared_preload_libraries=vectors.so",
-        "-c", "search_path=\"$user\", public, vectors",
-        "-c", "logging_collector=on"],
-      mounts: dbMounts,
-      ready: {
-        display: null,
-        fn: () =>
-          sdk.healthCheck.checkPortListening(effects, 5432, {
-            successMessage: '',
-            errorMessage: ''
-          }),
+    .addDaemon('immich-server', {
+      subcontainer: serverSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        env: getImmichEnv(postgresEnv),
+        runAsInit: true,
       },
-      env: dbEnv,
-      requires: [],
-    })
-    .addDaemon('primary', {
-      subcontainer: immich,
-      command: ['/assets/init.sh'],
-      mounts: sdk.Mounts.of()
-        .addVolume('main',
-          'immich',
-          '/data',
-          false),
       ready: {
-        display: 'Web Interface',
+        display: i18n('Web Interface'),
+        gracePeriod: 40000,
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, uiPort, {
-            successMessage: 'The web interface is ready',
-            errorMessage: 'The web interface is not ready',
+            successMessage: i18n('The web interface is ready'),
+            errorMessage: i18n('The web interface is not ready'),
           }),
       },
-      env: {
-        DB_HOSTNAME: 'localhost',
-        DB_USERNAME: 'postgres',
-        DB_PASSWORD: 'postgres',
-        DB_DATABASE_NAME: 'immich',
-        REDIS_HOSTNAME: 'localhost',
-      },
-      requires: ["db", "valkey"],
+      requires: ['postgres', 'valkey', 'immich-ml'],
     })
+    .addOneshot('configure-libraries', {
+      subcontainer: serverSub,
+      exec: {
+        fn: async () => {
+          if (!libs.length) return null
 
-  return daemons
+          // Compute import paths for each configured library
+          const libraryConfigs = libs.map((lib) => {
+            const importPath =
+              lib.source.selection === 'filebrowser'
+                ? `${FILEBROWSER_MOUNTPOINT}/${lib.source.value.path}`
+                : `${NEXTCLOUD_MOUNTPOINT}/data/${lib.source.value.user}/files/${lib.source.value.path}`
+            return { name: lib.name, importPaths: [importPath] }
+          })
+
+          await withTempApiKey(
+            postgresSub,
+            'startos-libs',
+            async ({ token, adminId }) => {
+              type Library = { id: string; name: string }
+              const existing = await immichApi<Library[]>(
+                '/libraries',
+                token,
+              )
+
+              for (const cfg of libraryConfigs) {
+                let lib = existing.find((e) => e.name === cfg.name)
+                if (!lib) {
+                  lib = await immichApi<Library>('/libraries', token, {
+                    method: 'POST',
+                    body: {
+                      ownerId: adminId,
+                      name: cfg.name,
+                      importPaths: cfg.importPaths,
+                    },
+                  })
+                } else {
+                  await immichApi(`/libraries/${lib.id}`, token, {
+                    method: 'PUT',
+                    body: { importPaths: cfg.importPaths },
+                  })
+                }
+                await immichApi(`/libraries/${lib.id}/scan`, token, {
+                  method: 'POST',
+                })
+              }
+            },
+          )
+
+          return null
+        },
+      },
+      requires: ['immich-server'],
+    })
+    .addOneshot('configure-smtp', {
+      subcontainer: serverSub,
+      exec: {
+        fn: async () => {
+          const store = await storeJson.read((s) => s.smtp).const(effects)
+          if (!store || store.selection === 'disabled') return null
+
+          let creds: T.SmtpValue | null = null
+          if (store.selection === 'system') {
+            creds = await sdk.getSystemSmtp(effects).const()
+            if (creds && store.value.customFrom)
+              creds.from = store.value.customFrom
+          } else if (store.selection === 'custom') {
+            creds = store.value
+          }
+          if (!creds) return null
+
+          await withTempApiKey(
+            postgresSub,
+            'startos-smtp',
+            async ({ token }) => {
+              const config = await immichApi<{
+                notifications?: { smtp?: unknown }
+              }>('/system-config', token)
+
+              config.notifications = {
+                ...config.notifications,
+                smtp: {
+                  enabled: true,
+                  from: creds.from,
+                  replyTo: creds.from,
+                  transport: {
+                    host: creds.server,
+                    port: creds.port,
+                    username: creds.login,
+                    password: creds.password || '',
+                    ignoreCert: false,
+                  },
+                },
+              }
+
+              await immichApi('/system-config', token, {
+                method: 'PUT',
+                body: config,
+              })
+            },
+          )
+
+          return null
+        },
+      },
+      requires: ['immich-server'],
+    })
 })

@@ -1,4 +1,5 @@
 import { sdk } from './sdk'
+import { i18n } from './i18n'
 import { uiPort } from './utils'
 
 export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
@@ -7,15 +8,17 @@ export const setInterfaces = sdk.setupInterfaces(async ({ effects }) => {
     protocol: 'http',
   })
   const ui = sdk.createInterface(effects, {
-    name: 'Web UI',
+    name: i18n('Web UI'),
     id: 'ui',
-    description: 'The web interface of Hello World',
+    description: i18n(
+      'The Immich web interface for managing your photo library',
+    ),
     type: 'ui',
     masked: false,
     schemeOverride: null,
     username: null,
     path: '',
-    search: {},
+    query: {},
   })
 
   const uiReceipt = await uiMultiOrigin.export([ui])
