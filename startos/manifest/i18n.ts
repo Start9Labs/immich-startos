@@ -23,6 +23,22 @@ export const long = {
     "Immich est une solution auto-hébergée de gestion de photos et vidéos. Sauvegardez, organisez et gérez facilement vos photos sur votre propre serveur. Les fonctionnalités incluent la recherche intelligente par apprentissage automatique, la reconnaissance faciale, l'organisation automatique et une interface web moderne et rapide. Parcourez, recherchez et partagez vos souvenirs sans sacrifier votre vie privée.",
 }
 
+export const filebrowserDescription = {
+  en_US: 'Used to index photos and videos from File Browser',
+  es_ES: 'Se utiliza para indexar fotos y videos desde File Browser',
+  de_DE: 'Wird verwendet, um Fotos und Videos aus File Browser zu indexieren',
+  pl_PL: 'Używany do indeksowania zdjęć i filmów z File Browser',
+  fr_FR: 'Utilisé pour indexer les photos et vidéos depuis File Browser',
+}
+
+export const nextcloudDescription = {
+  en_US: 'Used to index photos and videos from Nextcloud',
+  es_ES: 'Se utiliza para indexar fotos y videos desde Nextcloud',
+  de_DE: 'Wird verwendet, um Fotos und Videos aus Nextcloud zu indexieren',
+  pl_PL: 'Używany do indeksowania zdjęć i filmów z Nextcloud',
+  fr_FR: 'Utilisé pour indexer les photos et vidéos depuis Nextcloud',
+}
+
 export const installAlert = {
   en_US:
     'Immich requires significant system resources, especially when machine learning features are active. Facial recognition and smart search will use substantial CPU and RAM during initial indexing of your photo library.',

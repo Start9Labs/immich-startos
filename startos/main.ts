@@ -32,7 +32,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   })
 
   if (libs.some((l) => l.source.selection === 'filebrowser')) {
-    serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
+    serverMounts = serverMounts.mountDependency<typeof filebrowserManifest >({
       dependencyId: 'filebrowser',
       volumeId: 'data',
       subpath: null,
@@ -41,7 +41,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
   }
   if (libs.some((l) => l.source.selection === 'nextcloud')) {
-    serverMounts = serverMounts.mountDependency<typeof nextcloudManifest>({
+    serverMounts = serverMounts.mountDependency<typeof nextcloudManifest >({
       dependencyId: 'nextcloud',
       volumeId: 'nextcloud',
       subpath: null,
@@ -218,7 +218,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             if (creds && store.value.customFrom)
               creds.from = store.value.customFrom
           } else if (store.selection === 'custom') {
-            creds = store.value
+            creds = store.value.provider.value
           }
           if (!creds) return null
 
@@ -237,9 +237,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
                   from: creds.from,
                   replyTo: creds.from,
                   transport: {
-                    host: creds.server,
+                    host: creds.host,
                     port: creds.port,
-                    username: creds.login,
+                    username: creds.username,
                     password: creds.password || '',
                     ignoreCert: false,
                   },

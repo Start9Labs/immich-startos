@@ -1,12 +1,12 @@
-import { createHash, randomBytes } from 'crypto'
-import { sdk } from './sdk'
 import { T, utils } from '@start9labs/start-sdk'
+import { createHash, randomBytes } from 'crypto'
 import { storeJson } from './fileModels/store.json'
+import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
 export const POSTGRES_PATH = '/var/lib/postgresql/data' as const
-export const POSTGRES_DB = 'immich'
-export const POSTGRES_USER = 'postgres'
+export const POSTGRES_DB = 'immich' as const
+export const POSTGRES_USER = 'postgres' as const
 
 export function getPostgresSub(effects: T.Effects) {
   return sdk.SubContainer.of(
@@ -89,7 +89,9 @@ export async function immichApi<T = void>(
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`Immich API ${opts?.method ?? 'GET'} ${path} failed ${res.status}: ${text}`)
+    throw new Error(
+      `Immich API ${opts?.method ?? 'GET'} ${path} failed ${res.status}: ${text}`,
+    )
   }
   const ct = res.headers.get('content-type')
   if (ct && ct.includes('application/json')) return res.json() as T

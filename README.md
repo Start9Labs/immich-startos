@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.png" alt="Immich Logo" width="21%">
+  <img src="icon.svg" alt="Immich Logo" width="21%">
 </p>
 
 # Immich on StartOS
@@ -7,7 +7,7 @@
 > **Upstream docs:** <https://immich.app/docs>
 >
 > Everything not listed in this document should behave the same as upstream
-> Immich v2.5.2. If a feature, setting, or behavior is not mentioned
+> Immich. If a feature, setting, or behavior is not mentioned
 > here, the upstream documentation is accurate and fully applicable.
 
 [Immich](https://github.com/immich-app/immich) is a self-hosted photo and video backup solution with automatic mobile device backup, machine learning-powered search, face recognition, and a modern web interface.
@@ -36,8 +36,8 @@
 
 | Property | Value |
 |----------|-------|
-| Immich Server | `ghcr.io/immich-app/immich-server:v2.5.2` |
-| Immich ML | `ghcr.io/immich-app/immich-machine-learning:v2.5.2` |
+| Immich Server | `ghcr.io/immich-app/immich-server` |
+| Immich ML | `ghcr.io/immich-app/immich-machine-learning` |
 | PostgreSQL | `ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0` |
 | Valkey | `valkey/valkey:9-alpine` |
 | Architectures | x86_64, aarch64 |
@@ -258,10 +258,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions and development wo
 
 ```yaml
 package_id: immich
-upstream_version: 2.5.2
+upstream_version: latest
 images:
-  immich-server: ghcr.io/immich-app/immich-server:v2.5.2
-  immich-ml: ghcr.io/immich-app/immich-machine-learning:v2.5.2
+  immich-server: ghcr.io/immich-app/immich-server
+  immich-ml: ghcr.io/immich-app/immich-machine-learning
   postgres: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
   valkey: valkey/valkey:9-alpine
 architectures: [x86_64, aarch64]

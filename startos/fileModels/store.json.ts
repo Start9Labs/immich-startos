@@ -1,36 +1,35 @@
-import { matches, FileHelper } from '@start9labs/start-sdk'
+import { FileHelper, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
-const { object, string, arrayOf, oneOf, literal } = matches
-
-const shape = object({
-  postgresPassword: string.optional().onMismatch(undefined),
-  smtp: sdk.inputSpecConstants.smtpInputSpec.validator.onMismatch({
-    selection: 'disabled',
+const shape = z.object({
+  postgresPassword: z.string().optional().catch(undefined),
+  smtp: sdk.inputSpecConstants.smtpInputSpec.validator.catch({
+    selection: 'disabled' as const,
     value: {},
   }),
-  externalLibraries: arrayOf(
-    object({
-      name: string,
-      source: oneOf(
-        object({
-          selection: literal('nextcloud'),
-          value: object({
-            user: string,
-            path: string,
+  externalLibraries: z
+    .array(
+      z.object({
+        name: z.string(),
+        source: z.discriminatedUnion('selection', [
+          z.object({
+            selection: z.literal('nextcloud'),
+            value: z.object({
+              user: z.string(),
+              path: z.string(),
+            }),
           }),
-        }),
-        object({
-          selection: literal('filebrowser'),
-          value: object({
-            path: string,
+          z.object({
+            selection: z.literal('filebrowser'),
+            value: z.object({
+              path: z.string(),
+            }),
           }),
-        }),
-      ),
-    }),
-  )
+        ]),
+      }),
+    )
     .optional()
-    .onMismatch(undefined),
+    .catch(undefined),
 })
 
 export const storeJson = FileHelper.json(

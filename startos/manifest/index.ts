@@ -1,28 +1,33 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import { short, long, installAlert } from './i18n'
+import {
+  short,
+  long,
+  installAlert,
+  filebrowserDescription,
+  nextcloudDescription,
+} from './i18n'
 
 export const manifest = setupManifest({
   id: 'immich',
   title: 'Immich',
   license: 'AGPL-3.0',
-  wrapperRepo: 'https://github.com/Start9Labs/immich-startos',
+  packageRepo: 'https://github.com/Start9Labs/immich-startos/tree/update/040',
   upstreamRepo: 'https://github.com/immich-app/immich',
-  supportSite: 'https://github.com/immich-app/immich/discussions',
-  marketingSite: 'https://immich.app',
+  marketingUrl: 'https://immich.app',
   donationUrl: 'https://opencollective.com/immich',
-  docsUrl: 'https://immich.app/docs',
+  docsUrls: ['https://immich.app/docs'],
   description: { short, long },
   volumes: ['startos', 'upload', 'db', 'model-cache'],
   images: {
     'immich-server': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-server:v2.5.2',
+        dockerTag: 'ghcr.io/immich-app/immich-server:v2.5.6',
       },
       arch: ['x86_64', 'aarch64'],
     },
     'immich-ml': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.5.2',
+        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.5.6',
       },
       arch: ['x86_64', 'aarch64'],
     },
@@ -45,19 +50,19 @@ export const manifest = setupManifest({
   },
   dependencies: {
     filebrowser: {
-      description: 'Used to index photos and videos from File Browser',
+      description: filebrowserDescription,
       optional: true,
       metadata: {
         title: 'File Browser',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/filebrowser-startos/refs/heads/master/icon.png',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/filebrowser-startos/refs/heads/update/040/icon.svg',
       },
     },
     nextcloud: {
-      description: 'Used to index photos and videos from Nextcloud',
+      description: nextcloudDescription,
       optional: true,
       metadata: {
         title: 'Nextcloud',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/nextcloud-startos/refs/heads/master/icon.png',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/nextcloud-startos/refs/heads/update/040/icon.png',
       },
     },
   },
