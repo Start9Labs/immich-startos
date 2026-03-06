@@ -54,7 +54,7 @@ export const manifest = setupManifest({
       optional: true,
       metadata: {
         title: 'File Browser',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/filebrowser-startos/refs/heads/update/040/icon.svg',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/filebrowser-startos/fbf1fefb51cca9731f2a9a9e6f790ca150aa9d04/icon.svg',
       },
     },
     nextcloud: {
@@ -62,7 +62,7 @@ export const manifest = setupManifest({
       optional: true,
       metadata: {
         title: 'Nextcloud',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/nextcloud-startos/refs/heads/update/040/icon.png',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/nextcloud-startos/f5025c524301aebe62d9a79ad720223b053e1bf2/icon.svg',
       },
     },
   },
