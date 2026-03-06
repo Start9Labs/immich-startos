@@ -24,9 +24,11 @@ export const configureSmtp = sdk.Action.withInput(
 
   inputSpec,
 
-  async ({ effects }) => ({
-    smtp: (await storeJson.read((s) => s.smtp).const(effects)) || undefined,
-  }),
+  async ({ effects }) => {
+    const smtp = await storeJson.read((s) => s.smtp).const(effects)
+    if (!smtp || smtp.selection === 'disabled') return {}
+    return { smtp } as any
+  },
 
   async ({ effects, input }) =>
     storeJson.merge(effects, { smtp: input.smtp }),

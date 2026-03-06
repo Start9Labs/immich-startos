@@ -1,5 +1,4 @@
 import { sdk } from './sdk'
-import { T } from '@start9labs/start-sdk'
 import { i18n } from './i18n'
 import {
   uiPort,
@@ -212,13 +211,26 @@ export const main = sdk.setupMain(async ({ effects }) => {
           const store = await storeJson.read((s) => s.smtp).const(effects)
           if (!store || store.selection === 'disabled') return null
 
-          let creds: T.SmtpValue | null = null
+          let creds: {
+            host: string
+            port: number
+            from: string
+            username: string
+            password: string | null | undefined
+          } | null = null
           if (store.selection === 'system') {
             creds = await sdk.getSystemSmtp(effects).const()
             if (creds && store.value.customFrom)
               creds.from = store.value.customFrom
           } else if (store.selection === 'custom') {
-            creds = store.value.provider.value
+            const p = store.value.provider.value
+            creds = {
+              host: p.host,
+              port: Number(p.security.value.port),
+              from: p.from,
+              username: p.username,
+              password: p.password,
+            }
           }
           if (!creds) return null
 
