@@ -15,7 +15,7 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/immich-app/immich',
   marketingUrl: 'https://immich.app',
   donationUrl: 'https://opencollective.com/immich',
-  docsUrls: ['https://immich.app/docs'],
+  docsUrls: ['https://docs.immich.app/'],
   description: { short, long },
   volumes: ['startos', 'upload', 'db', 'model-cache'],
   images: {
