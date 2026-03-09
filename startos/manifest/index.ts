@@ -1,10 +1,10 @@
 import { setupManifest } from '@start9labs/start-sdk'
 import {
-  short,
-  long,
-  installAlert,
   filebrowserDescription,
+  installAlert,
+  long,
   nextcloudDescription,
+  short,
 } from './i18n'
 
 export const manifest = setupManifest({
@@ -15,7 +15,7 @@ export const manifest = setupManifest({
   upstreamRepo: 'https://github.com/immich-app/immich',
   marketingUrl: 'https://immich.app',
   donationUrl: 'https://opencollective.com/immich',
-  docsUrls: ['https://docs.immich.app/'],
+  docsUrls: ['https://docs.immich.app/overview/quick-start/'],
   description: { short, long },
   volumes: ['startos', 'upload', 'db', 'model-cache'],
   images: {
