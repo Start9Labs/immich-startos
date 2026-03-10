@@ -4,7 +4,7 @@
 
 # Immich on StartOS
 
-> **Upstream docs:** <https://immich.app/docs>
+> **Upstream docs:** <https://docs.immich.app/overview/quick-start/>
 >
 > Everything not listed in this document should behave the same as upstream
 > Immich. If a feature, setting, or behavior is not mentioned
