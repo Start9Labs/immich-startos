@@ -3,10 +3,12 @@ import { sdk } from '../sdk'
 
 const shape = z.object({
   postgresPassword: z.string().optional().catch(undefined),
-  smtp: sdk.inputSpecConstants.smtpInputSpec.validator.catch({
-    selection: 'disabled' as const,
-    value: {},
-  }),
+  smtp: z
+    .object({
+      selection: z.enum(['disabled', 'system', 'custom']),
+      value: z.record(z.string(), z.any()),
+    })
+    .catch({ selection: 'disabled' as const, value: {} }),
   externalLibraries: z
     .array(
       z.object({
