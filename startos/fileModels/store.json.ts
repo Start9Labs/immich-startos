@@ -1,14 +1,9 @@
-import { FileHelper, z } from '@start9labs/start-sdk'
+import { FileHelper, smtpShape, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
 const shape = z.object({
   postgresPassword: z.string().optional().catch(undefined),
-  smtp: z
-    .object({
-      selection: z.enum(['disabled', 'system', 'custom']),
-      value: z.record(z.string(), z.any()),
-    })
-    .catch({ selection: 'disabled' as const, value: {} }),
+  smtp: smtpShape,
   externalLibraries: z
     .array(
       z.object({

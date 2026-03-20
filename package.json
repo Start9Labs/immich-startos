@@ -6,9 +6,10 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "@start9labs/start-sdk": "^0.4.0-beta.61",
+    "@start9labs/start-sdk": "^0.4.0-beta.62",
     "filebrowser-startos": "github:Start9Labs/filebrowser-startos#update/040",
-    "nextcloud-startos": "github:Start9Labs/nextcloud-startos#update/040"
+    "nextcloud-startos": "github:Start9Labs/nextcloud-startos#update/040",
+    "yaml": "^2.8.2"
   },
   "devDependencies": {
     "@types/node": "^22.19.0",

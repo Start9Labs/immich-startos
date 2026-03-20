@@ -18,11 +18,11 @@ const dict = {
   'The path to the folder containing your photos and videos.': 9,
   'Must be a valid file path': 10,
   'External Libraries': 11,
-  'Name': 12,
+  Name: 12,
   'A unique name to identify this library (e.g. "Family Photos")': 13,
-  'Source': 14,
+  Source: 14,
   'The service where your photos and videos are stored': 15,
-  'Nextcloud': 16,
+  Nextcloud: 16,
   'Nextcloud User': 17,
   'The Nextcloud user account that owns the files.': 18,
   'May only contain alphanumeric characters, hyphens, and periods.': 19,
@@ -40,7 +40,6 @@ const dict = {
   // actions/configureSmtp.ts
   'Configure SMTP': 22,
   'Use system or custom SMTP credentials for Immich email notifications': 23,
-  'SMTP settings will be applied on next restart': 24,
 } as const
 
 /**

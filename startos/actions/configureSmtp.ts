@@ -1,6 +1,6 @@
-import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
+import { sdk } from '../sdk'
 
 const { InputSpec } = sdk
 
@@ -16,7 +16,7 @@ export const configureSmtp = sdk.Action.withInput(
     description: i18n(
       'Use system or custom SMTP credentials for Immich email notifications',
     ),
-    warning: i18n('SMTP settings will be applied on next restart'),
+    warning: null,
     allowedStatuses: 'any',
     group: null,
     visibility: 'enabled',
@@ -30,6 +30,5 @@ export const configureSmtp = sdk.Action.withInput(
     return { smtp } as any
   },
 
-  async ({ effects, input }) =>
-    storeJson.merge(effects, { smtp: input.smtp }),
+  async ({ effects, input }) => storeJson.merge(effects, { smtp: input.smtp }),
 )
