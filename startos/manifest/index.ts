@@ -21,13 +21,13 @@ export const manifest = setupManifest({
   images: {
     'immich-server': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-server:v2.5.6',
+        dockerTag: 'ghcr.io/immich-app/immich-server:v2.6.1',
       },
       arch: ['x86_64', 'aarch64'],
     },
     'immich-ml': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.5.6',
+        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.6.1',
       },
       arch: ['x86_64', 'aarch64'],
     },

@@ -38,8 +38,8 @@
 |----------|-------|
 | Immich Server | `ghcr.io/immich-app/immich-server` |
 | Immich ML | `ghcr.io/immich-app/immich-machine-learning` |
-| PostgreSQL | `ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0` |
-| Valkey | `valkey/valkey:9-alpine` |
+| PostgreSQL | `ghcr.io/immich-app/postgres` |
+| Valkey | `valkey/valkey` |
 | Architectures | x86_64, aarch64 |
 | Runtime | Four containers (Server + ML + PostgreSQL + Valkey) |
 
@@ -189,19 +189,22 @@ Dependencies are only needed if you want to index photos stored in those service
 
 ## Backups and Restore
 
-**Included in backup:**
+**Database:** Uses `pg_dump`/`pg_restore` for PostgreSQL instead of raw volume rsync. The dump is written directly to the backup target.
+
+**Volumes backed up via rsync:**
 
 - `startos` volume — Configuration and credentials
 - `upload` volume — All photos and videos
-- `db` volume — PostgreSQL database (metadata, users, albums)
 
 **NOT included in backup:**
 
+- `db` volume — Not rsynced directly; database is captured via `pg_dump`
 - `model-cache` volume — ML models are re-downloaded as needed
 
 **Restore behavior:**
 
 - All photos, albums, and metadata restored
+- Database is rebuilt from dump via `pg_restore`
 - User accounts preserved
 - External library configurations restored (re-scan needed)
 
@@ -258,12 +261,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions and development wo
 
 ```yaml
 package_id: immich
-upstream_version: latest
 images:
   immich-server: ghcr.io/immich-app/immich-server
   immich-ml: ghcr.io/immich-app/immich-machine-learning
-  postgres: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
-  valkey: valkey/valkey:9-alpine
+  postgres: ghcr.io/immich-app/postgres
+  valkey: valkey/valkey
 architectures: [x86_64, aarch64]
 volumes:
   upload: /usr/src/app/upload
@@ -284,10 +286,7 @@ health_checks:
   - valkey-cli ping (valkey)
   - port_listening: 3003 (immich-ml)
   - port_listening: 2283 (immich-server, 40s grace)
-backup_volumes:
-  - startos
-  - upload
-  - db
+backup_strategy: pg_dump (db) + volume rsync (startos, upload)
 excluded_from_backup:
   - model-cache (re-downloaded as needed)
 not_available:
