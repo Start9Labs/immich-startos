@@ -2,7 +2,7 @@ import { storeJson } from './fileModels/store.json'
 import { sdk } from './sdk'
 import { POSTGRES_DB, POSTGRES_PATH, POSTGRES_USER } from './utils'
 
-const PGDATA = `${POSTGRES_PATH}/data`
+const PGDATA = POSTGRES_PATH
 
 export const { createBackup, restoreInit } = sdk.setupBackups(async () =>
   sdk.Backups.withPgDump({
