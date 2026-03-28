@@ -43,6 +43,7 @@ export function getImmichEnv(
     DB_PASSWORD: postgresEnv.POSTGRES_PASSWORD,
     DB_DATABASE_NAME: postgresEnv.POSTGRES_DB,
     REDIS_HOSTNAME: 'localhost',
+    MACHINE_LEARNING_URL: 'http://localhost:3003',
   }
 }
 
