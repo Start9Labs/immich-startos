@@ -11,7 +11,7 @@ export const manifest = setupManifest({
   id: 'immich',
   title: 'Immich',
   license: 'AGPL-3.0',
-  packageRepo: 'https://github.com/Start9Labs/immich-startos/tree/update/040',
+  packageRepo: 'https://github.com/Start9Labs/immich-startos',
   upstreamRepo: 'https://github.com/immich-app/immich',
   marketingUrl: 'https://immich.app',
   donationUrl: 'https://opencollective.com/immich',
@@ -21,13 +21,13 @@ export const manifest = setupManifest({
   images: {
     'immich-server': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-server:v2.6.1',
+        dockerTag: 'ghcr.io/immich-app/immich-server:v2.6.3',
       },
       arch: ['x86_64', 'aarch64'],
     },
     'immich-ml': {
       source: {
-        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.6.1',
+        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.6.3',
       },
       arch: ['x86_64', 'aarch64'],
     },

@@ -1,7 +1,7 @@
 import { VersionInfo } from '@start9labs/start-sdk'
 
-export const v_2_6_1_0_b2 = VersionInfo.of({
-  version: '2.6.1:0-beta.2',
+export const v_2_6_3_0 = VersionInfo.of({
+  version: '2.6.3:0',
   releaseNotes: {
     en_US: 'Fix machine learning (smart search, auto-upload) by correctly routing ML requests to localhost',
     es_ES: 'Corrección del aprendizaje automático (búsqueda inteligente, carga automática) enrutando correctamente las solicitudes al localhost',
