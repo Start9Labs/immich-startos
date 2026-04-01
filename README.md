@@ -178,12 +178,27 @@ All other Immich settings are configured through the web interface:
 
 ## Dependencies
 
-| Dependency | Required | Purpose |
-|------------|----------|---------|
-| File Browser | Optional | External library source for photos |
-| Nextcloud | Optional | External library source for photos |
+### File Browser
 
-Dependencies are only needed if you want to index photos stored in those services.
+| Property | Value |
+|----------|-------|
+| Required | Optional |
+| Version constraint | `>= 2.62.2` |
+| Health checks | None |
+| Mounted volumes | `data` → `/mnt/filebrowser` (read-only) |
+| Purpose | External library source for indexing photos stored in File Browser |
+
+### Nextcloud
+
+| Property | Value |
+|----------|-------|
+| Required | Optional |
+| Version constraint | `>= 32.0.7` |
+| Health checks | None |
+| Mounted volumes | `nextcloud` → `/mnt/nextcloud` (read-only) |
+| Purpose | External library source for indexing photos stored in Nextcloud |
+
+Dependencies are only needed if you configure external libraries pointing to those services.
 
 ---
 
@@ -275,8 +290,19 @@ volumes:
 ports:
   ui: 2283
 dependencies:
-  filebrowser: optional (external library source)
-  nextcloud: optional (external library source)
+  filebrowser: optional (external library source, >= 2.62.2)
+  nextcloud: optional (external library source, >= 32.0.7)
+startos_managed_env_vars:
+  - DB_HOSTNAME
+  - DB_USERNAME
+  - DB_PASSWORD
+  - DB_DATABASE_NAME
+  - REDIS_HOSTNAME
+  - MACHINE_LEARNING_URL
+  - POSTGRES_DB
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+  - POSTGRES_INITDB_ARGS
 actions:
   - configure-smtp (enabled, any)
   - external-libraries (enabled, any)
