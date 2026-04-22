@@ -3,6 +3,7 @@ import { sdk } from '../sdk'
 
 const shape = z.object({
   postgresPassword: z.string().optional().catch(undefined),
+  primaryUrl: z.string().optional().catch(undefined),
   smtp: smtpShape,
   externalLibraries: z
     .array(

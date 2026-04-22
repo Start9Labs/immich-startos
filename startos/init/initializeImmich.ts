@@ -36,7 +36,7 @@ export const initializeImmich = sdk.setupOnInit(async (effects, kind) => {
         },
         requires: [],
       })
-      .runUntilSuccess(600_000)
+      .runUntilSuccess(300_000)
   } else {
     await storeJson.merge(effects, {})
   }

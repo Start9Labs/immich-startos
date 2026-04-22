@@ -40,10 +40,23 @@
 | Immich ML | `ghcr.io/immich-app/immich-machine-learning` |
 | PostgreSQL | `ghcr.io/immich-app/postgres` |
 | Valkey | `valkey/valkey` |
-| Architectures | x86_64, aarch64 |
+| Architectures | x86_64, aarch64 (GPU variants are x86_64 only) |
 | Runtime | Four containers (Server + ML + PostgreSQL + Valkey) |
 
 All images are upstream unmodified. PostgreSQL uses Immich's custom image with vector extensions for similarity search.
+
+### Hardware Acceleration Variants
+
+Pick the variant that matches your hardware. Only the machine-learning image differs between variants; server, postgres, and valkey are identical.
+
+| Variant | ML Image Tag Suffix | Requires | Arches | NVIDIA runtime |
+|---------|---------------------|----------|--------|----------------|
+| `generic` | *(none)* — CPU | — | x86_64, aarch64 | No |
+| `cuda` | `-cuda` | NVIDIA GPU | x86_64 | Yes |
+| `rocm` | `-rocm` | AMD GPU | x86_64 | No |
+| `openvino` | `-openvino` | Intel GPU | x86_64 | No |
+
+**Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
 
 ---
 
@@ -58,7 +71,7 @@ All images are upstream unmodified. PostgreSQL uses Immich's custom image with v
 
 **StartOS-specific files:**
 
-- `store.json` — PostgreSQL password, SMTP settings, external library configurations
+- `store.json` — PostgreSQL password, primary URL, SMTP settings, external library configurations
 
 ---
 
@@ -87,8 +100,19 @@ All images are upstream unmodified. PostgreSQL uses Immich's custom image with v
 | Setting | Action | Description |
 |---------|--------|-------------|
 | SMTP | Configure SMTP | Email notifications |
+| Primary URL | Set Primary URL | External domain used for public share links |
 | External Libraries | Manage External Libraries | Index photos from File Browser or Nextcloud |
 | Admin Password | Reset Admin Password | Generate new admin credentials |
+
+### Settings Forced by StartOS (not editable in Immich UI)
+
+On every startup, StartOS writes the following values into Immich's system config via the API. Editing them in the Immich Admin UI will not persist across restarts.
+
+| Field | Value | Reason |
+|-------|-------|--------|
+| `newVersionCheck.enabled` | `false` | StartOS manages Immich updates; suppresses the "new version available" modal |
+| `backup.database.enabled` | `false` | StartOS backs up the database via `pg_dump`; Immich's internal dumps are duplicate work |
+| `server.externalDomain` | Selected primary URL | Keeps Immich's public share links in sync with a StartOS-known URL |
 
 ### Settings Managed via Immich Web UI
 
@@ -121,6 +145,20 @@ All other Immich settings are configured through the web interface:
 ---
 
 ## Actions (StartOS UI)
+
+### Set Primary URL
+
+| Property | Value |
+|----------|-------|
+| ID | `set-primary-url` |
+| Name | Set Primary URL |
+| Visibility | Enabled |
+| Availability | Any status |
+| Purpose | Choose which Immich URL is advertised as the external domain |
+
+Immich embeds its external domain in public share links (albums, assets). This action lets you pick a URL from the available non-local interfaces (LAN IP, `.local`, Tor, custom domains). On first install the `.local` URL is selected by default. If the previously selected URL is removed (e.g., Tor disabled, custom domain deleted), a critical task prompts you to pick a new one.
+
+**Note:** Changes apply on next restart.
 
 ### Configure SMTP
 
@@ -245,8 +283,10 @@ Dependencies are only needed if you configure external libraries pointing to tho
 
 1. **External libraries limited to StartOS services** — Can only index from File Browser or Nextcloud (not arbitrary filesystem paths)
 2. **SMTP via action** — Configure through StartOS action rather than Immich web UI
-3. **No hardware transcoding** — GPU acceleration not available
-4. **No custom upload paths** — Upload location is fixed
+3. **No custom upload paths** — Upload location is fixed
+4. **Upstream version-check banner suppressed** — StartOS manages Immich updates, so `newVersionCheck.enabled` is forced to `false` in the system config on every startup to hide the "new version available" modal.
+5. **Immich's internal database backup disabled** — `backup.database.enabled` is forced to `false` because StartOS already dumps the database via `pg_dump` during its backup flow.
+6. **External domain managed via action** — `server.externalDomain` is set to the URL selected in the Set Primary URL action; editing it in the Immich Admin UI does not persist.
 
 ---
 
@@ -281,7 +321,8 @@ images:
   immich-ml: ghcr.io/immich-app/immich-machine-learning
   postgres: ghcr.io/immich-app/postgres
   valkey: valkey/valkey
-architectures: [x86_64, aarch64]
+architectures: [x86_64, aarch64]  # GPU variants (cuda, rocm, openvino) are x86_64 only
+variants: [generic, cuda, rocm, openvino]
 volumes:
   upload: /usr/src/app/upload
   db: /var/lib/postgresql/data
@@ -298,15 +339,20 @@ startos_managed_env_vars:
   - DB_PASSWORD
   - DB_DATABASE_NAME
   - REDIS_HOSTNAME
-  - MACHINE_LEARNING_URL
+  - IMMICH_MACHINE_LEARNING_URL
   - POSTGRES_DB
   - POSTGRES_USER
   - POSTGRES_PASSWORD
   - POSTGRES_INITDB_ARGS
 actions:
   - configure-smtp (enabled, any)
+  - set-primary-url (enabled, any)
   - external-libraries (enabled, any)
   - reset-admin-password (enabled, only-running)
+startos_forced_system_config:
+  newVersionCheck.enabled: false
+  backup.database.enabled: false
+  server.externalDomain: <primary URL from set-primary-url action>
 health_checks:
   - pg_isready (postgres)
   - valkey-cli ping (valkey)
@@ -317,6 +363,5 @@ excluded_from_backup:
   - model-cache (re-downloaded as needed)
 not_available:
   - Arbitrary external library paths
-  - Hardware transcoding (GPU)
   - Custom upload paths
 ```

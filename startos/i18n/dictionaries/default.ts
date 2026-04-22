@@ -40,6 +40,14 @@ const dict = {
   // actions/configureSmtp.ts
   'Configure SMTP': 22,
   'Use system or custom SMTP credentials for Immich email notifications': 23,
+
+  // actions/setPrimaryUrl.ts
+  URL: 31,
+  'Set Primary URL': 32,
+  'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Changes apply on next restart.': 33,
+
+  // init/taskSetPrimaryUrl.ts
+  'Primary URL removed. Select a new primary URL.': 34,
 } as const
 
 /**

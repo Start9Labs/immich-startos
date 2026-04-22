@@ -32,6 +32,10 @@ export default {
     28: 'Contraseña restablecida',
     29: 'La contraseña de administrador ha sido restablecida',
     30: 'Nueva contraseña',
+    31: 'URL',
+    32: 'Establecer URL principal',
+    33: 'Elija cuál de sus URLs de Immich debe anunciarse como el dominio externo. Immich usa esta URL al generar enlaces públicos para compartir álbumes y recursos. Los cambios se aplican en el próximo reinicio.',
+    34: 'URL principal eliminada. Seleccione una nueva URL principal.',
   },
   de_DE: {
     0: 'Starte Immich',
@@ -64,6 +68,10 @@ export default {
     28: 'Passwort zurückgesetzt',
     29: 'Das Admin-Passwort wurde zurückgesetzt',
     30: 'Neues Passwort',
+    31: 'URL',
+    32: 'Primäre URL festlegen',
+    33: 'Wählen Sie aus, welche Ihrer Immich-URLs als externe Domain angekündigt werden soll. Immich verwendet diese URL beim Generieren öffentlicher Freigabelinks für Alben und Inhalte. Änderungen werden beim nächsten Neustart wirksam.',
+    34: 'Primäre URL entfernt. Bitte wählen Sie eine neue primäre URL.',
   },
   pl_PL: {
     0: 'Uruchamianie Immich',
@@ -96,6 +104,10 @@ export default {
     28: 'Hasło zresetowane',
     29: 'Hasło administratora zostało zresetowane',
     30: 'Nowe hasło',
+    31: 'URL',
+    32: 'Ustaw główny URL',
+    33: 'Wybierz, który z Twoich adresów URL Immich ma być ogłaszany jako domena zewnętrzna. Immich używa tego adresu URL podczas generowania publicznych linków do udostępniania albumów i zasobów. Zmiany zostaną zastosowane po następnym uruchomieniu.',
+    34: 'Główny URL został usunięty. Wybierz nowy główny URL.',
   },
   fr_FR: {
     0: 'Démarrage de Immich',
@@ -128,5 +140,9 @@ export default {
     28: 'Mot de passe réinitialisé',
     29: 'Le mot de passe administrateur a été réinitialisé',
     30: 'Nouveau mot de passe',
+    31: 'URL',
+    32: "Définir l'URL principale",
+    33: "Choisissez laquelle de vos URL Immich doit être annoncée comme domaine externe. Immich utilise cette URL lors de la génération de liens de partage publics pour les albums et les ressources. Les modifications s'appliquent au prochain redémarrage.",
+    34: "URL principale supprimée. Sélectionnez une nouvelle URL principale.",
   },
 } satisfies Record<string, LangDict>

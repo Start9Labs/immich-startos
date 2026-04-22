@@ -4,6 +4,12 @@ import { storeJson } from './fileModels/store.json'
 import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
+
+export async function getNonLocalUrls(effects: T.Effects): Promise<string[]> {
+  return sdk.serviceInterface
+    .getOwn(effects, 'ui', (i) => i?.addressInfo?.nonLocal.format() || [])
+    .const()
+}
 export const POSTGRES_PATH = '/var/lib/postgresql' as const
 export const POSTGRES_DB = 'immich' as const
 export const POSTGRES_USER = 'postgres' as const
@@ -43,7 +49,7 @@ export function getImmichEnv(
     DB_PASSWORD: postgresEnv.POSTGRES_PASSWORD,
     DB_DATABASE_NAME: postgresEnv.POSTGRES_DB,
     REDIS_HOSTNAME: 'localhost',
-    MACHINE_LEARNING_URL: 'http://localhost:3003',
+    IMMICH_MACHINE_LEARNING_URL: 'http://localhost:3003',
   }
 }
 

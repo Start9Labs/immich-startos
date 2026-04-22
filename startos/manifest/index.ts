@@ -7,6 +7,100 @@ import {
   short,
 } from './i18n'
 
+const variant = process.env.VARIANT || 'generic'
+
+type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> }
+const mutable = <T>(value: T): Mutable<T> => value as Mutable<T>
+
+const IMMICH_VERSION = 'v2.7.5'
+
+const mlImageConfigs = {
+  generic: {
+    source: {
+      dockerTag: `ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}`,
+    },
+    arch: ['x86_64', 'aarch64'],
+    nvidiaContainer: false,
+  },
+  cuda: {
+    source: {
+      dockerTag: `ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}-cuda`,
+    },
+    arch: ['x86_64'],
+    nvidiaContainer: true,
+  },
+  rocm: {
+    source: {
+      dockerTag: `ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}-rocm`,
+    },
+    arch: ['x86_64'],
+    nvidiaContainer: false,
+  },
+  openvino: {
+    source: {
+      dockerTag: `ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}-openvino`,
+    },
+    arch: ['x86_64'],
+    nvidiaContainer: false,
+  },
+} as const
+
+const serverImageConfigs = {
+  generic: {
+    source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
+    arch: ['x86_64', 'aarch64'],
+    nvidiaContainer: false,
+  },
+  cuda: {
+    source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
+    arch: ['x86_64'],
+    nvidiaContainer: true,
+  },
+  rocm: {
+    source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
+    arch: ['x86_64'],
+    nvidiaContainer: false,
+  },
+  openvino: {
+    source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
+    arch: ['x86_64'],
+    nvidiaContainer: false,
+  },
+} as const
+
+const hwDevices = {
+  generic: [],
+  cuda: [
+    {
+      class: 'display' as const,
+      product: null,
+      vendor: null,
+      driver: 'nvidia',
+      description: 'An NVIDIA GPU',
+    },
+  ],
+  rocm: [
+    {
+      class: 'display' as const,
+      product: null,
+      vendor: null,
+      driver: 'amdgpu',
+      description: 'An AMD GPU',
+    },
+  ],
+  openvino: [
+    {
+      class: 'display' as const,
+      product: null,
+      vendor: null,
+      driver: 'i915',
+      description: 'An Intel GPU',
+    },
+  ],
+} as const
+
+const variantKey = variant as keyof typeof mlImageConfigs
+
 export const manifest = setupManifest({
   id: 'immich',
   title: 'Immich',
@@ -19,18 +113,10 @@ export const manifest = setupManifest({
   description: { short, long },
   volumes: ['startos', 'upload', 'db', 'model-cache'],
   images: {
-    'immich-server': {
-      source: {
-        dockerTag: 'ghcr.io/immich-app/immich-server:v2.6.3',
-      },
-      arch: ['x86_64', 'aarch64'],
-    },
-    'immich-ml': {
-      source: {
-        dockerTag: 'ghcr.io/immich-app/immich-machine-learning:v2.6.3',
-      },
-      arch: ['x86_64', 'aarch64'],
-    },
+    'immich-server': mutable(
+      serverImageConfigs[variantKey] ?? serverImageConfigs.generic,
+    ),
+    'immich-ml': mutable(mlImageConfigs[variantKey] ?? mlImageConfigs.generic),
     postgres: {
       source: {
         dockerTag:
@@ -44,6 +130,10 @@ export const manifest = setupManifest({
       },
       arch: ['x86_64', 'aarch64'],
     },
+  },
+  hardwareAcceleration: true,
+  hardwareRequirements: {
+    device: [...(hwDevices[variantKey] ?? hwDevices.generic)],
   },
   alerts: {
     install: installAlert,
