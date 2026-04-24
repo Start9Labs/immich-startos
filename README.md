@@ -85,8 +85,8 @@ Pick the variant that matches your hardware. Only the machine-learning image dif
 
 **First-run steps:**
 
-1. Install Immich from StartOS marketplace
-2. Access the web UI
+1. Install Immich from StartOS marketplace. Install takes a few extra minutes because Immich's database schema is created during install rather than on first boot.
+2. Access the web UI — it comes up immediately after install completes.
 3. Register your account (first user becomes administrator)
 4. Install mobile apps and configure backup
 5. Optionally configure external libraries via action
@@ -106,13 +106,15 @@ Pick the variant that matches your hardware. Only the machine-learning image dif
 
 ### Settings Forced by StartOS (not editable in Immich UI)
 
-On every startup, StartOS writes the following values into Immich's system config via the API. Editing them in the Immich Admin UI will not persist across restarts.
+StartOS reasserts the following values on every startup. Editing them in the Immich Admin UI will not persist across restarts.
 
 | Field | Value | Reason |
 |-------|-------|--------|
 | `newVersionCheck.enabled` | `false` | StartOS manages Immich updates; suppresses the "new version available" modal |
 | `backup.database.enabled` | `false` | StartOS backs up the database via `pg_dump`; Immich's internal dumps are duplicate work |
 | `server.externalDomain` | Selected primary URL | Keeps Immich's public share links in sync with a StartOS-known URL |
+
+The first two are enforced from the very first boot. `server.externalDomain` applies once your admin account exists and a URL has been chosen via the Set Primary URL action.
 
 ### Settings Managed via Immich Web UI
 

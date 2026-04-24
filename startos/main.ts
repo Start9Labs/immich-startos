@@ -4,12 +4,12 @@ import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
 import {
-  getImmichEnv,
+  buildCoreDaemons,
+  createCoreSubs,
+  enforceSystemConfigDefaults,
   getPostgresEnv,
-  getPostgresSub,
   immichApi,
-  uiPort,
-  withTempApiKey,
+  withAdminApiKey,
 } from './utils'
 
 const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser'
@@ -76,107 +76,36 @@ export const main = sdk.setupMain(async ({ effects }) => {
     })
   }
 
-  const valkeySub = await sdk.SubContainer.of(
-    effects,
-    { imageId: 'valkey' },
-    sdk.Mounts.of(),
-    'valkey',
-  )
-
-  const postgresSub = await getPostgresSub(effects)
-
-  const mlSub = await sdk.SubContainer.of(
-    effects,
-    { imageId: 'immich-ml' },
-    sdk.Mounts.of().mountVolume({
-      volumeId: 'model-cache',
-      mountpoint: '/cache',
-      readonly: false,
-      subpath: null,
-    }),
-    'immich-ml',
-  )
-
-  const serverSub = await sdk.SubContainer.of(
-    effects,
-    { imageId: 'immich-server' },
-    serverMounts,
-    'immich-server',
-  )
+  const subs = await createCoreSubs(effects, serverMounts)
+  const { postgresSub, serverSub } = subs
 
   return (
-    sdk.Daemons.of(effects)
-      .addDaemon('postgres', {
+    buildCoreDaemons(effects, subs, postgresEnv, {
+      name: i18n('Web Interface'),
+      success: i18n('The web interface is ready'),
+      failure: i18n('The web interface is not ready'),
+    })
+      // Enforce StartOS-authoritative defaults via direct write to
+      // system_metadata[system-config] — this bypasses Immich's API (which
+      // requires an admin API key) so it works on a fresh install before the
+      // user has completed sign-up.
+      //
+      //   newVersionCheck.enabled = false
+      //     StartOS owns updates, so the "new version available" modal is noise.
+      //   backup.database.enabled = false
+      //     StartOS backs up the DB via pg_dump. Immich's scheduled internal
+      //     dump is duplicate work that slowly fills the upload volume.
+      //
+      // See CLAUDE.md for the version-bump checklist.
+      .addOneshot('enforce-defaults', {
         subcontainer: postgresSub,
         exec: {
-          command: sdk.useEntrypoint(),
-          env: postgresEnv,
-        },
-        ready: {
-          display: null,
           fn: async () => {
-            const { exitCode } = await postgresSub.exec([
-              'pg_isready',
-              '-U',
-              postgresEnv.POSTGRES_USER,
-              '-h',
-              'localhost',
-            ])
-            if (exitCode !== 0) {
-              return { result: 'loading', message: null }
-            }
-            return { result: 'success', message: null }
+            await enforceSystemConfigDefaults(postgresSub)
+            return null
           },
         },
-        requires: [],
-      })
-      .addDaemon('valkey', {
-        subcontainer: valkeySub,
-        exec: { command: 'valkey-server' },
-        ready: {
-          display: null,
-          fn: async () => {
-            const res = await valkeySub.exec(['valkey-cli', 'ping'])
-            return res.stdout.toString().trim() === 'PONG'
-              ? { message: '', result: 'success' }
-              : { message: res.stdout.toString().trim(), result: 'failure' }
-          },
-        },
-        requires: [],
-      })
-      .addDaemon('immich-ml', {
-        subcontainer: mlSub,
-        exec: {
-          command: sdk.useEntrypoint(),
-          runAsInit: true,
-        },
-        ready: {
-          display: null,
-          fn: () =>
-            sdk.healthCheck.checkPortListening(effects, 3003, {
-              successMessage: '',
-              errorMessage: '',
-            }),
-        },
-        requires: [],
-      })
-      .addDaemon('immich-server', {
-        subcontainer: serverSub,
-        exec: {
-          command: sdk.useEntrypoint(),
-          env: getImmichEnv(postgresEnv),
-          runAsInit: true,
-        },
-        ready: {
-          display: i18n('Web Interface'),
-          gracePeriod: 40000,
-          fn: () =>
-            sdk.healthCheck.checkPortListening(effects, uiPort, {
-              successMessage: i18n('The web interface is ready'),
-              errorMessage: i18n('The web interface is not ready'),
-            }),
-        },
-        requires: ['postgres', 'valkey', 'immich-ml'],
+        requires: ['postgres'],
       })
       .addOneshot('configure-libraries', {
         subcontainer: serverSub,
@@ -193,7 +122,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
               return { name: lib.name, importPaths: [importPath] }
             })
 
-            await withTempApiKey(
+            await withAdminApiKey(
               postgresSub,
               'startos-libs',
               async ({ token, adminId }) => {
@@ -229,16 +158,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['immich-server'],
       })
-      // Apply every StartOS-authoritative Immich setting in one /system-config
-      // round trip. We use the API rather than IMMICH_CONFIG_FILE because that
-      // env var locks the *entire* admin settings UI — the API approach leaves
-      // everything else UI-editable.
+      // Apply user-configurable settings that depend on the Immich API:
       //
-      //   newVersionCheck.enabled = false
-      //     StartOS owns updates, so the "new version available" modal is noise.
-      //   backup.database.enabled = false
-      //     StartOS backs up the DB via pg_dump. Immich's scheduled internal
-      //     dump is duplicate work that slowly fills the upload volume.
       //   server.externalDomain = <primaryUrl>
       //     Immich embeds this in public share links. User picks which URL via
       //     the Set Primary URL action.
@@ -246,32 +167,24 @@ export const main = sdk.setupMain(async ({ effects }) => {
       //     Only applied when the SMTP action is configured (system/custom).
       //     When "disabled", SMTP is left untouched — we don't forcibly clear
       //     whatever the user had previously.
+      //
+      // Enforced defaults (newVersionCheck, backup.database) live in the
+      // enforce-defaults oneshot above — direct DB write, no admin needed.
       .addOneshot('apply-system-config', {
         subcontainer: serverSub,
         exec: {
           fn: async () => {
-            await withTempApiKey(
+            if (!primaryUrl && !smtpCreds) return null
+
+            await withAdminApiKey(
               postgresSub,
               'startos-system-config',
               async ({ token }) => {
                 const config = await immichApi<{
-                  newVersionCheck?: { enabled?: boolean }
-                  backup?: { database?: { enabled?: boolean } }
                   server?: { externalDomain?: string }
                   notifications?: { smtp?: unknown }
                 }>('/system-config', token)
 
-                config.newVersionCheck = {
-                  ...config.newVersionCheck,
-                  enabled: false,
-                }
-                config.backup = {
-                  ...config.backup,
-                  database: {
-                    ...config.backup?.database,
-                    enabled: false,
-                  },
-                }
                 if (primaryUrl) {
                   config.server = {
                     ...config.server,

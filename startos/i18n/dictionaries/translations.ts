@@ -143,6 +143,6 @@ export default {
     31: 'URL',
     32: "Définir l'URL principale",
     33: "Choisissez laquelle de vos URL Immich doit être annoncée comme domaine externe. Immich utilise cette URL lors de la génération de liens de partage publics pour les albums et les ressources. Les modifications s'appliquent au prochain redémarrage.",
-    34: "URL principale supprimée. Sélectionnez une nouvelle URL principale.",
+    34: 'URL principale supprimée. Sélectionnez une nouvelle URL principale.',
   },
 } satisfies Record<string, LangDict>

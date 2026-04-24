@@ -74,8 +74,217 @@ export const dbMounts = sdk.Mounts.of().mountVolume({
   subpath: null,
 })
 
+/**
+ * Create the four subcontainers that make up a running Immich stack:
+ * postgres, valkey, immich-ml, immich-server. Both `initializeImmich`
+ * (install-time) and `main` (runtime) use these; only the server mounts
+ * differ (install uses upload-only; main optionally adds external-library
+ * mounts).
+ */
+export async function createCoreSubs(
+  effects: T.Effects,
+  serverMountsArg: Parameters<typeof sdk.SubContainer.of>[2],
+) {
+  return {
+    postgresSub: await getPostgresSub(effects),
+    valkeySub: await sdk.SubContainer.of(
+      effects,
+      { imageId: 'valkey' },
+      sdk.Mounts.of(),
+      'valkey',
+    ),
+    mlSub: await sdk.SubContainer.of(
+      effects,
+      { imageId: 'immich-ml' },
+      sdk.Mounts.of().mountVolume({
+        volumeId: 'model-cache',
+        mountpoint: '/cache',
+        readonly: false,
+        subpath: null,
+      }),
+      'immich-ml',
+    ),
+    serverSub: await sdk.SubContainer.of(
+      effects,
+      { imageId: 'immich-server' },
+      serverMountsArg,
+      'immich-server',
+    ),
+  }
+}
+
+export type CoreSubs = Awaited<ReturnType<typeof createCoreSubs>>
+
+/**
+ * Build a Daemons chain with the four core daemons wired up with their
+ * ready-checks and requires ordering. Callers append their own oneshots
+ * (and `.runUntilSuccess()` for install, or return for main).
+ */
+export function buildCoreDaemons(
+  effects: T.Effects,
+  subs: CoreSubs,
+  postgresEnv: Awaited<ReturnType<typeof getPostgresEnv>>,
+  serverReadyDisplay: { name: string; success: string; failure: string } | null,
+) {
+  return sdk.Daemons.of(effects)
+    .addDaemon('postgres', {
+      subcontainer: subs.postgresSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        env: postgresEnv,
+      },
+      ready: {
+        display: null,
+        fn: async () => {
+          const { exitCode } = await subs.postgresSub.exec([
+            'pg_isready',
+            '-U',
+            postgresEnv.POSTGRES_USER,
+            '-h',
+            'localhost',
+          ])
+          if (exitCode !== 0) {
+            return { result: 'loading', message: null }
+          }
+          return { result: 'success', message: null }
+        },
+      },
+      requires: [],
+    })
+    .addDaemon('valkey', {
+      subcontainer: subs.valkeySub,
+      exec: { command: 'valkey-server' },
+      ready: {
+        display: null,
+        fn: async () => {
+          const res = await subs.valkeySub.exec(['valkey-cli', 'ping'])
+          return res.stdout.toString().trim() === 'PONG'
+            ? { message: '', result: 'success' }
+            : { message: res.stdout.toString().trim(), result: 'failure' }
+        },
+      },
+      requires: [],
+    })
+    .addDaemon('immich-ml', {
+      subcontainer: subs.mlSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        runAsInit: true,
+      },
+      ready: {
+        display: null,
+        fn: () =>
+          sdk.healthCheck.checkPortListening(effects, 3003, {
+            successMessage: '',
+            errorMessage: '',
+          }),
+      },
+      requires: [],
+    })
+    .addDaemon('immich-server', {
+      subcontainer: subs.serverSub,
+      exec: {
+        command: sdk.useEntrypoint(),
+        env: getImmichEnv(postgresEnv),
+        runAsInit: true,
+      },
+      ready: {
+        display: serverReadyDisplay?.name ?? null,
+        gracePeriod: 40000,
+        fn: () =>
+          sdk.healthCheck.checkPortListening(effects, uiPort, {
+            successMessage: serverReadyDisplay?.success ?? '',
+            errorMessage: serverReadyDisplay?.failure ?? '',
+          }),
+      },
+      requires: ['postgres', 'valkey', 'immich-ml'],
+    })
+}
+
 function sqlLiteral(value: string): string {
   return `'${value.replace(/'/g, "''")}'`
+}
+
+type PgExecSub = {
+  execFail(
+    cmd: string[],
+    opts?: { env?: Record<string, string> },
+  ): Promise<{ stdout: string | Buffer }>
+}
+
+function psqlCmd(sql: string, quiet = false): string[] {
+  const base = [
+    'psql',
+    '-U',
+    POSTGRES_USER,
+    '-d',
+    POSTGRES_DB,
+    '-h',
+    'localhost',
+  ]
+  if (quiet) base.push('-t', '-A')
+  return [...base, '-c', sql]
+}
+
+/**
+ * Returns true iff an admin user row exists in the `user` table.
+ * Used to skip work that requires an admin API key before the user has
+ * completed Immich's initial sign-up flow.
+ */
+export async function hasAdmin(
+  pgSub: PgExecSub,
+  pgEnv?: Record<string, string>,
+): Promise<boolean> {
+  const res = await pgSub.execFail(
+    psqlCmd('SELECT 1 FROM "user" WHERE "isAdmin" = true LIMIT 1', true),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return res.stdout.toString().trim() === '1'
+}
+
+/**
+ * Upserts the StartOS-enforced defaults into `system_metadata[system-config]`
+ * via direct DB write. No admin and no running API are required.
+ *
+ * On a fresh install the `system_metadata` table is created by Immich's
+ * `InitialMigration`, which runs during `immich-server` startup — so on the
+ * first startup this is called before the table exists. We no-op in that
+ * case: the row gets written on the next `main` execution (typically the
+ * next restart), and Immich picks up the values on that same boot since it
+ * only reads config at bootstrap.
+ *
+ * See CLAUDE.md ("Enforced defaults via direct DB write") for the version-bump
+ * checklist — this bypasses Immich's update API and depends on stable schema.
+ */
+export async function enforceSystemConfigDefaults(
+  pgSub: PgExecSub,
+  pgEnv?: Record<string, string>,
+): Promise<void> {
+  const tableCheck = await pgSub.execFail(
+    psqlCmd("SELECT to_regclass('public.system_metadata')", true),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  if (tableCheck.stdout.toString().trim() === '') return
+
+  // Shallow-merge at each level preserves unrelated sibling keys that the
+  // user (or Immich itself) may have written.
+  const sql = `
+    INSERT INTO system_metadata (key, value)
+    VALUES (
+      'system-config',
+      '{"newVersionCheck":{"enabled":false},"backup":{"database":{"enabled":false}}}'::jsonb
+    )
+    ON CONFLICT (key) DO UPDATE SET value = system_metadata.value
+      || jsonb_build_object('newVersionCheck',
+           COALESCE(system_metadata.value->'newVersionCheck', '{}'::jsonb)
+           || '{"enabled":false}'::jsonb)
+      || jsonb_build_object('backup',
+           COALESCE(system_metadata.value->'backup', '{}'::jsonb)
+           || jsonb_build_object('database',
+                COALESCE(system_metadata.value->'backup'->'database', '{}'::jsonb)
+                || '{"enabled":false}'::jsonb))
+  `
+  await pgSub.execFail(psqlCmd(sql), pgEnv ? { env: pgEnv } : undefined)
 }
 
 const immichBase = `http://localhost:${uiPort}/api`
@@ -105,9 +314,43 @@ export async function immichApi<T = void>(
   return undefined as T
 }
 
+export class NoAdminError extends Error {
+  constructor() {
+    super('Immich admin user does not exist yet')
+    this.name = 'NoAdminError'
+  }
+}
+
+/**
+ * Like {@link withTempApiKey}, but gracefully no-ops (returning `undefined`)
+ * when no admin exists yet. Use for startup oneshots that need to re-try on
+ * every `main` execution until the user completes Immich's sign-up flow.
+ *
+ * For user-triggered actions where "no admin" should surface as a failure
+ * (e.g. resetAdminPassword), call {@link withTempApiKey} directly and let
+ * {@link NoAdminError} propagate.
+ */
+export async function withAdminApiKey<R>(
+  pgSub: PgExecSub,
+  name: string,
+  fn: (ctx: { token: string; adminId: string }) => Promise<R>,
+  pgEnv?: Record<string, string>,
+): Promise<R | undefined> {
+  try {
+    return await withTempApiKey(pgSub, name, fn, pgEnv)
+  } catch (e) {
+    if (e instanceof NoAdminError) return undefined
+    throw e
+  }
+}
+
 /**
  * Creates a temporary Immich API key, runs a callback with the token and admin user ID,
  * then always cleans up the key afterward.
+ *
+ * Throws {@link NoAdminError} if no admin user exists yet (fresh install, pre-sign-up).
+ * Callers that run unconditionally (e.g. startup oneshots) should check {@link hasAdmin}
+ * first and skip gracefully.
  *
  * @param pgSub - A subcontainer that can execute psql (running daemon or temp container)
  * @param name - A label for the temp key (e.g. 'startos-smtp')
@@ -115,33 +358,21 @@ export async function immichApi<T = void>(
  * @param pgEnv - Optional environment variables for psql (needed for temp containers)
  */
 export async function withTempApiKey<R>(
-  pgSub: {
-    execFail(
-      cmd: string[],
-      opts?: { env?: Record<string, string> },
-    ): Promise<{ stdout: string | Buffer }>
-  },
+  pgSub: PgExecSub,
   name: string,
   fn: (ctx: { token: string; adminId: string }) => Promise<R>,
   pgEnv?: Record<string, string>,
 ): Promise<R> {
+  if (!(await hasAdmin(pgSub, pgEnv))) throw new NoAdminError()
+
   const token = randomBytes(32).toString('base64').replace(/\W/g, '')
   const hashedKey = createHash('sha256').update(token).digest('base64')
 
   const insertRes = await pgSub.execFail(
-    [
-      'psql',
-      '-U',
-      POSTGRES_USER,
-      '-d',
-      POSTGRES_DB,
-      '-h',
-      'localhost',
-      '-t',
-      '-A',
-      '-c',
+    psqlCmd(
       `INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(name)}, ${sqlLiteral(hashedKey)}, id, '{"all"}' FROM "user" WHERE "isAdmin" = true LIMIT 1 RETURNING id, "userId"`,
-    ],
+      true,
+    ),
     pgEnv ? { env: pgEnv } : undefined,
   )
   const line = insertRes.stdout.toString().trim().split('\n')[0]
@@ -151,17 +382,7 @@ export async function withTempApiKey<R>(
     return await fn({ token, adminId })
   } finally {
     await pgSub.execFail(
-      [
-        'psql',
-        '-U',
-        POSTGRES_USER,
-        '-d',
-        POSTGRES_DB,
-        '-h',
-        'localhost',
-        '-c',
-        `DELETE FROM api_key WHERE id = ${sqlLiteral(keyId)}`,
-      ],
+      psqlCmd(`DELETE FROM api_key WHERE id = ${sqlLiteral(keyId)}`),
       pgEnv ? { env: pgEnv } : undefined,
     )
   }

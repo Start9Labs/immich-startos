@@ -1,13 +1,9 @@
 export const short = {
   en_US: 'High-performance self-hosted photo and video management',
-  es_ES:
-    'Gestión de fotos y videos autoalojada de alto rendimiento',
-  de_DE:
-    'Leistungsstarke selbst gehostete Foto- und Videoverwaltung',
-  pl_PL:
-    'Wydajne samodzielnie hostowane zarządzanie zdjęciami i filmami',
-  fr_FR:
-    'Gestion de photos et vidéos auto-hébergée haute performance',
+  es_ES: 'Gestión de fotos y videos autoalojada de alto rendimiento',
+  de_DE: 'Leistungsstarke selbst gehostete Foto- und Videoverwaltung',
+  pl_PL: 'Wydajne samodzielnie hostowane zarządzanie zdjęciami i filmami',
+  fr_FR: 'Gestion de photos et vidéos auto-hébergée haute performance',
 }
 
 export const long = {
