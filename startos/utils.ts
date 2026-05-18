@@ -366,11 +366,11 @@ export async function withTempApiKey<R>(
   if (!(await hasAdmin(pgSub, pgEnv))) throw new NoAdminError()
 
   const token = randomBytes(32).toString('base64').replace(/\W/g, '')
-  const hashedKey = createHash('sha256').update(token).digest('base64')
+  const hashedKeyHex = createHash('sha256').update(token).digest('hex')
 
   const insertRes = await pgSub.execFail(
     psqlCmd(
-      `INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(name)}, ${sqlLiteral(hashedKey)}, id, '{"all"}' FROM "user" WHERE "isAdmin" = true LIMIT 1 RETURNING id, "userId"`,
+      `INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(name)}, decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, '{"all"}' FROM "user" WHERE "isAdmin" = true LIMIT 1 RETURNING id, "userId"`,
       true,
     ),
     pgEnv ? { env: pgEnv } : undefined,
