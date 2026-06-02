@@ -1,6 +1,6 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
-export const v_2_7_5_5 = VersionInfo.of({
+export const current = VersionInfo.of({
   version: '2.7.5:5',
   releaseNotes: {
     en_US: "Fixes 'Invalid API key' log noise caused by an upstream change to how Immich stores API keys.",
