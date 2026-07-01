@@ -7,13 +7,14 @@ import {
   buildCoreDaemons,
   createCoreSubs,
   enforceSystemConfigDefaults,
+  ensureApiKey,
+  FILEBROWSER_MOUNTPOINT,
   getPostgresEnv,
   immichApi,
+  NEXTCLOUD_MOUNTPOINT,
+  sourceExposed,
   withAdminApiKey,
 } from './utils'
-
-const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser'
-const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting Immich'))
@@ -24,6 +25,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
   if (!store) throw new Error('store.json not found')
 
   const libs = store.externalLibraries || []
+  const exposed = store.exposedSources
   const primaryUrl = store.primaryUrl
   const smtpStore = store.smtp
 
@@ -58,7 +60,11 @@ export const main = sdk.setupMain(async ({ effects }) => {
     }
   }
 
-  // Build server mounts: always mount upload volume, conditionally mount external libraries
+  // Build server mounts: always mount upload volume, then mount each exposed
+  // source's volume read-only. Exposure is driven by the Connect Photo Sources
+  // action OR any configured library (see `sourceExposed`) — so mounting is no
+  // longer a side effect of configuring a library: a source can be exposed for
+  // self-service in the Immich admin UI with no StartOS library at all.
   let serverMounts = sdk.Mounts.of().mountVolume({
     volumeId: 'upload',
     mountpoint: '/usr/src/app/upload',
@@ -66,7 +72,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     subpath: null,
   })
 
-  if (libs.some((l) => l.source.selection === 'filebrowser')) {
+  if (sourceExposed('filebrowser', exposed, libs)) {
     serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
       dependencyId: 'filebrowser',
       volumeId: 'data',
@@ -75,7 +81,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       readonly: true,
     })
   }
-  if (libs.some((l) => l.source.selection === 'nextcloud')) {
+  if (sourceExposed('nextcloud', exposed, libs)) {
     serverMounts = serverMounts.mountDependency<typeof nextcloudManifest>({
       dependencyId: 'nextcloud',
       volumeId: 'nextcloud',
@@ -116,57 +122,55 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['postgres'],
       })
-      .addOneshot('configure-libraries', {
+      // Ensure a long-lived Immich API key exists (minting/repairing it on
+      // each startup once an admin exists). The Manage External Libraries
+      // action uses it to call the Immich API with a plain fetch — crucially in
+      // the owner dropdown, which is built at form-render time and fetches the
+      // user list live, so newly added users appear without a restart.
+      .addOneshot('ensure-api-key', {
         subcontainer: serverSub,
         exec: {
           fn: async () => {
-            if (!libs.length) return null
-
-            // Compute import paths for each configured library
-            const libraryConfigs = libs.map((lib) => {
-              const importPath =
-                lib.source.selection === 'filebrowser'
-                  ? `${FILEBROWSER_MOUNTPOINT}/${lib.source.value.path}`
-                  : `${NEXTCLOUD_MOUNTPOINT}/data/${lib.source.value.user}/files/${lib.source.value.path}`
-              return { name: lib.name, importPaths: [importPath] }
-            })
-
-            await withAdminApiKey(
-              postgresSub,
-              'startos-libs',
-              async ({ token, adminId }) => {
-                type Library = { id: string; name: string }
-                const existing = await immichApi<Library[]>('/libraries', token)
-
-                for (const cfg of libraryConfigs) {
-                  let lib = existing.find((e) => e.name === cfg.name)
-                  if (!lib) {
-                    lib = await immichApi<Library>('/libraries', token, {
-                      method: 'POST',
-                      body: {
-                        ownerId: adminId,
-                        name: cfg.name,
-                        importPaths: cfg.importPaths,
-                      },
-                    })
-                  } else {
-                    await immichApi(`/libraries/${lib.id}`, token, {
-                      method: 'PUT',
-                      body: { importPaths: cfg.importPaths },
-                    })
-                  }
-                  await immichApi(`/libraries/${lib.id}/scan`, token, {
-                    method: 'POST',
-                  })
-                }
-              },
-            )
-
+            await ensureApiKey(effects, postgresSub)
             return null
           },
         },
         requires: ['immich-server'],
       })
+      // Cache the Nextcloud usernames (folders under /mnt/nextcloud/data that
+      // contain a `files` dir) so the Manage External Libraries Nextcloud-user
+      // dropdown can read them cheaply at form-render time — the action context
+      // can't see the mount, only the server container can.
+      .addOneshot('cache-nextcloud-users', {
+        subcontainer: serverSub,
+        exec: {
+          fn: async () => {
+            if (!sourceExposed('nextcloud', exposed, libs)) {
+              await storeJson.merge(effects, { nextcloudUsers: [] })
+              return null
+            }
+            const res = await serverSub.exec([
+              'sh',
+              '-c',
+              'for d in /mnt/nextcloud/data/*/files; do [ -d "$d" ] && basename "$(dirname "$d")"; done',
+            ])
+            const users = res.stdout
+              .toString()
+              .split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean)
+            await storeJson.merge(effects, { nextcloudUsers: users })
+            return null
+          },
+        },
+        requires: ['immich-server'],
+      })
+      // External libraries are NOT reconciled here. They live in Immich's DB
+      // (which persists across restarts and is captured in backups) and are
+      // managed live, by id, through the Manage External Libraries action. The
+      // old per-restart re-apply correlated by name, which duplicated libraries
+      // on rename and orphaned them on removal — see actions/externalLibraries.ts.
+      //
       // Apply user-configurable settings that depend on the Immich API:
       //
       //   server.externalDomain = <primaryUrl>

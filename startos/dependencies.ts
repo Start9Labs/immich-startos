@@ -1,20 +1,22 @@
 import { T } from '@start9labs/start-sdk'
 import { sdk } from './sdk'
 import { storeJson } from './fileModels/store.json'
+import { sourceExposed } from './utils'
 
 export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
-  const libs =
-    (await storeJson.read((s) => s.externalLibraries).const(effects)) || []
+  const store = await storeJson.read().const(effects)
+  const libs = store?.externalLibraries || []
+  const exposed = store?.exposedSources
 
   const deps: T.CurrentDependenciesResult<any> = {}
 
-  if (libs.some((l) => l.source.selection === 'filebrowser')) {
+  if (sourceExposed('filebrowser', exposed, libs)) {
     deps['filebrowser'] = {
       kind: 'exists',
       versionRange: '>=2.63.18:3',
     }
   }
-  if (libs.some((l) => l.source.selection === 'nextcloud')) {
+  if (sourceExposed('nextcloud', exposed, libs)) {
     deps['nextcloud'] = {
       kind: 'exists',
       versionRange: '>=33.0.6:1',

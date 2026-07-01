@@ -103,12 +103,13 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 
 ### Settings Managed via StartOS Actions
 
-| Setting            | Action                    | Description                                 |
-| ------------------ | ------------------------- | ------------------------------------------- |
-| SMTP               | Configure SMTP            | Email notifications                         |
-| Primary URL        | Set Primary URL           | External domain used for public share links |
-| External Libraries | Manage External Libraries | Index photos from File Browser or Nextcloud |
-| Admin Password     | Reset Admin Password      | Generate new admin credentials              |
+| Setting            | Action                    | Description                                                                                      |
+| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------ |
+| SMTP               | Configure SMTP            | Email notifications                                                                              |
+| Primary URL        | Set Primary URL           | External domain used for public share links                                                      |
+| Data Sources       | Connect Photo Sources     | Mount File Browser / Nextcloud into Immich (read-only) so they can be used as external libraries |
+| External Libraries | Manage External Libraries | Live two-way editor over Immich's external libraries (create/edit/reassign/delete, with owner)   |
+| Admin Password     | Reset Admin Password      | Generate new admin credentials                                                                   |
 
 ### Settings Forced by StartOS (not editable in Immich UI)
 
@@ -186,27 +187,57 @@ Immich embeds its external domain in public share links (albums, assets). This a
 
 **Note:** Changes apply on next restart.
 
+### Connect Photo Sources
+
+| Property     | Value                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| ID           | `connect-sources`                                                                                        |
+| Name         | Connect Photo Sources                                                                                    |
+| Group        | External Libraries                                                                                       |
+| Visibility   | Enabled                                                                                                  |
+| Availability | Any status                                                                                               |
+| Purpose      | Grant Immich read-only access to another service's files so it can be used as an external library source |
+
+Toggle **File Browser** and/or **Nextcloud** on to mount that service's volume read-only into the Immich container (`/mnt/filebrowser`, `/mnt/nextcloud`). This is the **prerequisite** for using a source as an external library — a source must be connected here before it can be selected anywhere:
+
+- In **Manage External Libraries**, only connected sources appear as options; unconnected ones are not offered.
+- In the **Immich admin UI** (Administration → Libraries), **any Immich admin can create their own external library** against a connected source, choosing the owning user themselves. This is the way to give a non-admin user a library owned by them, or to set one up without the admin wanting one of their own.
+
+Backwards compatibility: a library that pre-dates this action keeps its source connected automatically (the source is treated as connected whenever a library already uses it), so existing installs need no action after upgrade.
+
+Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). **Note:** Changes apply on next restart.
+
 ### Manage External Libraries
 
-| Property     | Value                                    |
-| ------------ | ---------------------------------------- |
-| ID           | `external-libraries`                     |
-| Name         | Manage External Libraries                |
-| Visibility   | Enabled                                  |
-| Availability | Any status                               |
-| Purpose      | Index photos from other StartOS services |
+| Property     | Value                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------- |
+| ID           | `external-libraries`                                                                          |
+| Name         | Manage External Libraries                                                                     |
+| Group        | External Libraries                                                                            |
+| Visibility   | Enabled                                                                                       |
+| Availability | Only when running                                                                             |
+| Purpose      | Create, edit, reassign, and delete external libraries — a live view of Immich's own libraries |
 
-**Supported sources:**
+This action is a **live, two-way editor over Immich's external libraries**, not a separate config store:
 
-- **File Browser** — Index photos from File Browser's data volume
-- **Nextcloud** — Index photos from a Nextcloud user's files
+- It reads the real libraries straight from Immich, so libraries you created in **Immich's admin UI** (Administration → Libraries) also appear here.
+- It correlates by Immich library id, so **renaming** edits the library in place (no duplicates) and **removing a row deletes the library** in Immich.
+- Each library has an **owner** (the Immich user whose timeline the photos appear in) — set when the library is created and, per Immich, **not changeable afterward**.
 
-**How it works:**
+Because it talks to the live Immich API, it's only available while the service is running.
 
-1. Add a library with a name and source
-2. Select File Browser or Nextcloud
-3. Specify the folder path containing photos
-4. Libraries are created/updated and scanned on restart
+**Fields (per library):**
+
+- **Immich User** — a dropdown of your Immich users, fetched live from Immich each time you open the action (so new users appear without a restart); defaults to the admin. Don't confuse this with the Nextcloud user below (whose _files_ are read).
+- **Name** — display name.
+- **Source** — pick the source, and its folders appear beneath it:
+  - **File Browser** — a **Folders** list (one row per folder, e.g. `Photos`).
+  - **Nextcloud** — a user dropdown (users discovered on the Nextcloud volume) plus a **Folders** list under that user's files.
+  - **Custom paths** — an **Import Paths** list of full paths, for libraries that span multiple Nextcloud users, mix sources, or use paths outside the mounts.
+
+  Only connected sources appear as File Browser / Nextcloud (connect them first via Connect Photo Sources); **Custom paths** is always available. A freshly switched source starts with no folder rows — click **Add** to enter one.
+
+**Every Immich library is shown.** A library maps to File Browser or Nextcloud when all its paths fit a single connected source; anything else (multiple folders across users, mixed sources, unrecognized paths) shows under **Custom paths**. Nothing is silently hidden, and a library added/edited in Immich's own UI — including adding folders — round-trips here. Adding a second folder to a library no longer makes it disappear.
 
 ### Reset Admin Password
 
@@ -229,7 +260,7 @@ Immich embeds its external domain in public share links (albums, assets). This a
 | Property           | Value                                                              |
 | ------------------ | ------------------------------------------------------------------ |
 | Required           | Optional                                                           |
-| Version constraint | `>= 2.62.2`                                                        |
+| Version constraint | `>= 2.63.18:3`                                                     |
 | Health checks      | None                                                               |
 | Mounted volumes    | `data` → `/mnt/filebrowser` (read-only)                            |
 | Purpose            | External library source for indexing photos stored in File Browser |
@@ -239,12 +270,12 @@ Immich embeds its external domain in public share links (albums, assets). This a
 | Property           | Value                                                           |
 | ------------------ | --------------------------------------------------------------- |
 | Required           | Optional                                                        |
-| Version constraint | `>= 32.0.7`                                                     |
+| Version constraint | `>= 33.0.6:1`                                                   |
 | Health checks      | None                                                            |
 | Mounted volumes    | `nextcloud` → `/mnt/nextcloud` (read-only)                      |
 | Purpose            | External library source for indexing photos stored in Nextcloud |
 
-Dependencies are only needed if you configure external libraries pointing to those services.
+A dependency is pulled in only when its source is connected — either via the **Connect Photo Sources** action or by configuring an external library that uses it.
 
 ---
 
@@ -289,7 +320,7 @@ Dependencies are only needed if you configure external libraries pointing to tho
 
 ## Limitations and Differences
 
-1. **External libraries limited to StartOS services** — Can only index from File Browser or Nextcloud (not arbitrary filesystem paths)
+1. **External library sources** — The Manage External Libraries action offers File Browser and Nextcloud as guided sources (only once connected), plus a **Custom paths** option for anything else. Paths still only resolve to data mounted into the container (File Browser / Nextcloud), so Custom paths is for unusual shapes (multiple users, mixed sources), not arbitrary host directories. Every Immich library is shown and editable here, including ones created in Immich's own UI.
 2. **SMTP via action** — Configure through StartOS action rather than Immich web UI
 3. **No custom upload paths** — Upload location is fixed
 4. **Upstream version-check banner suppressed** — StartOS manages Immich updates, so `newVersionCheck.enabled` is forced to `false` in the system config on every startup to hide the "new version available" modal.
@@ -339,8 +370,8 @@ volumes:
 ports:
   ui: 2283
 dependencies:
-  filebrowser: optional (external library source, >= 2.62.2)
-  nextcloud: optional (external library source, >= 32.0.7)
+  filebrowser: optional (external library source, >= 2.63.18:3; pulled in when connected)
+  nextcloud: optional (external library source, >= 33.0.6:1; pulled in when connected)
 startos_managed_env_vars:
   - DB_HOSTNAME
   - DB_USERNAME
@@ -355,7 +386,8 @@ startos_managed_env_vars:
 actions:
   - configure-smtp (enabled, any)
   - set-primary-url (enabled, any)
-  - external-libraries (enabled, any)
+  - connect-sources (enabled, any) # mounts filebrowser/nextcloud volumes read-only; decoupled from library config
+  - external-libraries (enabled, only-running) # live two-way mirror of Immich libraries, by id, with owner; deletes on row removal
   - reset-admin-password (enabled, only-running)
 startos_forced_system_config:
   newVersionCheck.enabled: false
