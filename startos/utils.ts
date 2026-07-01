@@ -9,6 +9,34 @@ export const uiPort = 2283 as const
 export const uiHostId = 'ui-multi'
 export const uiInterfaceId = 'ui'
 
+export const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser' as const
+export const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud' as const
+
+export type ExposableSource = 'filebrowser' | 'nextcloud'
+
+/**
+ * Whether a source's volume should be mounted read-only into Immich.
+ *
+ * True when the StartOS owner has explicitly exposed the source via the
+ * Connect Photo Sources action, OR when any configured external library already
+ * uses it. The second clause is load-bearing for backward compatibility: before
+ * explicit exposure existed, the mount was driven purely by configured
+ * libraries, so existing installs carry no `exposedSources` flag — keying off
+ * `externalLibraries` too keeps their mounts (and thus their libraries) working
+ * across the upgrade. It also guarantees a configured library can never point at
+ * an unmounted path.
+ */
+export function sourceExposed(
+  source: ExposableSource,
+  exposedSources: Partial<Record<ExposableSource, boolean>> | null | undefined,
+  libs: ReadonlyArray<{ source: { selection: string } }>,
+): boolean {
+  return (
+    !!exposedSources?.[source] ||
+    libs.some((l) => l.source.selection === source)
+  )
+}
+
 export async function getNonLocalUrls(effects: T.Effects): Promise<string[]> {
   return sdk.host
     .getOwn(effects, uiHostId, (host) => {
@@ -380,7 +408,7 @@ export async function withTempApiKey<R>(
 
   const insertRes = await pgSub.execFail(
     psqlCmd(
-      `INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(name)}, decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, '{"all"}' FROM "user" WHERE "isAdmin" = true LIMIT 1 RETURNING id, "userId"`,
+      `INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(name)}, decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, '{"all"}' FROM "user" WHERE "isAdmin" = true ORDER BY "createdAt" ASC LIMIT 1 RETURNING id, "userId"`,
       true,
     ),
     pgEnv ? { env: pgEnv } : undefined,
@@ -396,4 +424,68 @@ export async function withTempApiKey<R>(
       pgEnv ? { env: pgEnv } : undefined,
     )
   }
+}
+
+/**
+ * Returns a long-lived 'startos-managed' Immich API key, minting one if the
+ * stored key is missing or no longer valid. Unlike {@link withTempApiKey} this
+ * key persists (in store.json), so the action can call the Immich API with a
+ * plain fetch — including from the owner dropdown built at form-render time,
+ * which can't afford to spin a DB container.
+ *
+ * Returns undefined if no admin exists yet (nothing to own the key).
+ */
+export async function ensureApiKey(
+  effects: T.Effects,
+  pgSub: PgExecSub,
+  pgEnv?: Record<string, string>,
+): Promise<string | undefined> {
+  const existing = await storeJson.read((s) => s.apiKey).once()
+  if (existing) {
+    try {
+      const res = await fetch(`${immichBase}/users/me`, {
+        headers: { 'x-api-key': existing },
+      })
+      if (res.ok) return existing
+    } catch {}
+  }
+  if (!(await hasAdmin(pgSub, pgEnv))) return undefined
+
+  const token = randomBytes(32).toString('base64').replace(/\W/g, '')
+  const hashedKeyHex = createHash('sha256').update(token).digest('hex')
+  // Drop any prior managed key (its raw token is unrecoverable) before minting.
+  await pgSub.execFail(
+    psqlCmd(`DELETE FROM api_key WHERE name = 'startos-managed'`),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  await pgSub.execFail(
+    psqlCmd(
+      `INSERT INTO api_key (name, key, "userId", permissions) SELECT 'startos-managed', decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, '{"all"}' FROM "user" WHERE "isAdmin" = true ORDER BY "createdAt" ASC LIMIT 1`,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  await storeJson.merge(effects, { apiKey: token })
+  return token
+}
+
+/**
+ * Action-side accessor for the persistent key: returns the stored key if
+ * present, otherwise spins a temporary postgres container once to mint it
+ * (covers the narrow window after sign-up before the ensure-api-key oneshot has
+ * run on a restart). The owner dropdown does NOT use this — it only reads the
+ * stored key — so no container is ever spun at form-render time.
+ */
+export async function getOrMintApiKey(
+  effects: T.Effects,
+): Promise<string | undefined> {
+  const existing = await storeJson.read((s) => s.apiKey).once()
+  if (existing) return existing
+  const pgEnv = await getPostgresEnv(effects)
+  return sdk.SubContainer.withTemp(
+    effects,
+    { imageId: 'postgres' },
+    dbMounts,
+    'immich-key',
+    (pgSub) => ensureApiKey(effects, pgSub, pgEnv),
+  )
 }

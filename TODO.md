@@ -20,3 +20,19 @@ stays at `14-vectorchord0.4.3-pgvectors0.2.0`. Deliberately. Blockers:
 Revisit when Immich's own `docker-compose.yml` moves to a vchord 1.x image. At that point verify
 whether a Postgres restart is needed between the `ALTER EXTENSION` and the reindex (see the warning
 in `server/src/services/database.service.ts`) — our daemon chain does not restart Postgres mid-boot.
+
+## Legacy store cleanup (optional)
+
+`store.externalLibraries` is vestigial — written by no one now, read only as the
+backwards-compat OR in `sourceExposed` (mount + variant gating). A one-time `up`
+migration could backfill `exposedSources` from it and clear it, making
+`exposedSources` the sole mount driver. Not required; purely tidiness.
+
+## Done this session
+
+- Connect Photo Sources action (decoupled mount), connect-first picker.
+- Live two-way mirror of Immich libraries (id-correlated create/update/delete),
+  owner dropdown, only-running, persistent API key.
+- Multi-folder libraries + **Custom paths** catch-all so no library is ever
+  silently hidden (fixes: adding a second folder made a library disappear).
+- Nextcloud user is a dropdown (cached list ∪ existing-library users).
