@@ -8,7 +8,7 @@
 
 - A full Immich stack — the Immich server, its machine-learning sidecar, a Postgres database with the vector extensions Immich needs, and a Valkey cache — exposed as the **Web UI** interface.
 - Photo and video storage on a dedicated `upload` volume, included in StartOS backups (the database is captured separately via `pg_dump`).
-- A choice of hardware-acceleration variants (`generic`, `cuda`, `rocm`, `openvino`) selected at install — pick the one matching the GPU on your server, or `generic` for CPU-only.
+- A choice of hardware-acceleration variants (`generic`, `cuda`, `rocm`, `openvino`) selected at install — pick the one matching the GPU on your server, or `generic` for CPU-only. Immich's machine-learning features (smart search, facial recognition) need a modern CPU — `x86-64-v2` on x86 servers, or any `aarch64` board. On older x86 hardware the machine-learning container won't start, but the rest of Immich keeps working.
 - Optional integration with **File Browser** and **Nextcloud** as sources for external photo libraries.
 
 ## Getting set up
