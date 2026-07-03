@@ -33,11 +33,19 @@ export const main = sdk.setupMain(async ({ effects }) => {
     from: string
     username: string
     password: string | null | undefined
+    secure: boolean
   } | null = null
   if (smtpStore && smtpStore.selection === 'system') {
-    smtpCreds = await sdk.getSystemSmtp(effects).const()
-    if (smtpCreds && smtpStore.value.customFrom)
-      smtpCreds.from = smtpStore.value.customFrom
+    const sys = await sdk.getSystemSmtp(effects).const()
+    if (sys)
+      smtpCreds = {
+        host: sys.host,
+        port: sys.port,
+        from: smtpStore.value.customFrom || sys.from,
+        username: sys.username,
+        password: sys.password,
+        secure: sys.security === 'tls',
+      }
   } else if (smtpStore && smtpStore.selection === 'custom') {
     const p = smtpStore.value.provider.value
     smtpCreds = {
@@ -46,6 +54,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       from: p.from,
       username: p.username,
       password: p.password,
+      secure: p.security.selection === 'tls',
     }
   }
 
@@ -201,6 +210,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
                       transport: {
                         host: smtpCreds.host,
                         port: smtpCreds.port,
+                        secure: smtpCreds.secure,
                         username: smtpCreds.username,
                         password: smtpCreds.password || '',
                         ignoreCert: false,

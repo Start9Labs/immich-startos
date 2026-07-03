@@ -58,6 +58,8 @@ Pick the variant that matches your hardware. Only the machine-learning image dif
 
 **Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
 
+**Machine-learning CPU requirement:** the machine-learning container requires an `x86-64-v2` CPU (or any `aarch64` host). On older x86 hardware that predates `x86-64-v2`, the machine-learning container fails to start while the server, database, and cache keep running — smart search and facial recognition are lost, but core photo management is not.
+
 ---
 
 ## Volume and Data Layout
