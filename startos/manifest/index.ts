@@ -1,7 +1,6 @@
 import { setupManifest } from '@start9labs/start-sdk'
 import {
   filebrowserDescription,
-  installAlert,
   long,
   nextcloudDescription,
   short,
@@ -136,9 +135,6 @@ export const manifest = setupManifest({
   hardwareAcceleration: true,
   hardwareRequirements: {
     device: [...(hwDevices[variantKey] ?? hwDevices.generic)],
-  },
-  alerts: {
-    install: installAlert,
   },
   dependencies: {
     filebrowser: {
