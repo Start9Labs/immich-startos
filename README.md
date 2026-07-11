@@ -34,14 +34,14 @@
 
 ## Image and Container Runtime
 
-| Property | Value |
-|----------|-------|
-| Immich Server | `ghcr.io/immich-app/immich-server` |
-| Immich ML | `ghcr.io/immich-app/immich-machine-learning` |
-| PostgreSQL | `ghcr.io/immich-app/postgres` |
-| Valkey | `valkey/valkey` |
-| Architectures | x86_64, aarch64 (GPU variants are x86_64 only) |
-| Runtime | Four containers (Server + ML + PostgreSQL + Valkey) |
+| Property      | Value                                               |
+| ------------- | --------------------------------------------------- |
+| Immich Server | `ghcr.io/immich-app/immich-server`                  |
+| Immich ML     | `ghcr.io/immich-app/immich-machine-learning`        |
+| PostgreSQL    | `ghcr.io/immich-app/postgres`                       |
+| Valkey        | `valkey/valkey`                                     |
+| Architectures | x86_64, aarch64 (GPU variants are x86_64 only)      |
+| Runtime       | Four containers (Server + ML + PostgreSQL + Valkey) |
 
 All images are upstream unmodified. PostgreSQL uses Immich's custom image with vector extensions for similarity search.
 
@@ -49,16 +49,18 @@ All images are upstream unmodified. PostgreSQL uses Immich's custom image with v
 
 StartOS selects the variant **automatically** from the GPU it detects on the host (via each variant's manifest `hardwareRequirements`); there is no manual picker. Only the machine-learning image differs between variants; server, postgres, and valkey are identical.
 
-| Variant | ML Image Tag Suffix | Auto-selected for | Arches | NVIDIA runtime |
-|---------|---------------------|-------------------|--------|----------------|
-| `generic` | *(none)* — CPU | Any host with no matching GPU (default) | x86_64, aarch64 | No |
-| `cuda` | `-cuda` | NVIDIA GPU (`nvidia` driver) | x86_64 | Yes |
-| `rocm` | `-rocm` | Discrete AMD GPU (`amdgpu` driver, Navi/Radeon RX/Instinct) | x86_64 | No |
-| `openvino` | `-openvino` | Intel GPU (`i915` driver) | x86_64 | No |
+| Variant    | ML Image Tag Suffix | Auto-selected for                                           | Arches          | NVIDIA runtime |
+| ---------- | ------------------- | ----------------------------------------------------------- | --------------- | -------------- |
+| `generic`  | _(none)_ — CPU      | Any host with no matching GPU (default)                     | x86_64, aarch64 | No             |
+| `cuda`     | `-cuda`             | NVIDIA GPU (`nvidia` driver)                                | x86_64          | Yes            |
+| `rocm`     | `-rocm`             | Discrete AMD GPU (`amdgpu` driver, Navi/Radeon RX/Instinct) | x86_64          | No             |
+| `openvino` | `-openvino`         | Intel GPU (`i915` driver)                                   | x86_64          | No             |
 
-**AMD GPUs — discrete only:** the `rocm` variant is offered only to *discrete* AMD GPUs. ROCm's MIGraphX backend crashes during model compilation on integrated Radeon graphics (e.g. the Radeon 680M in Ryzen APUs), so those hosts get the CPU-only `generic` variant instead. Selection matches the GPU product name in `rocm`'s `hardwareRequirements`, so a discrete card StartOS doesn't recognize also falls back to `generic` — sideload the `-rocm` s9pk manually if you need GPU ML on such a card.
+**AMD GPUs — discrete only:** the `rocm` variant is offered only to _discrete_ AMD GPUs. ROCm's MIGraphX backend crashes during model compilation on integrated Radeon graphics (e.g. the Radeon 680M in Ryzen APUs), so those hosts get the CPU-only `generic` variant instead. Selection matches the GPU product name in `rocm`'s `hardwareRequirements`, so a discrete card StartOS doesn't recognize also falls back to `generic` — sideload the `-rocm` s9pk manually if you need GPU ML on such a card.
 
-**Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
+**NVIDIA GPUs — `-nvidia` flavor only:** the `cuda` variant (and NVENC transcoding) require StartOS to be installed from a `-nvidia` platform flavor (`x86_64-nvidia` / `aarch64-nvidia`), which bundles the NVIDIA driver and container toolkit. On the standard or `-nonfree` flavors the NVIDIA driver is absent, so an NVIDIA card isn't detected — its `nvidia` driver never appears, so the `cuda` variant isn't auto-selected and machine learning falls back to the CPU (`generic`) variant, even with an NVIDIA card physically present.
+
+**Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime, and therefore the `-nvidia` flavor above); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
 
 **Machine-learning CPU requirement:** the machine-learning container requires an `x86-64-v2` CPU (or any `aarch64` host). On older x86 hardware that predates `x86-64-v2`, the machine-learning container fails to start while the server, database, and cache keep running — smart search and facial recognition are lost, but core photo management is not.
 
@@ -66,12 +68,12 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 
 ## Volume and Data Layout
 
-| Volume | Mount Point | Purpose |
-|--------|-------------|---------|
-| `upload` | `/usr/src/app/upload` | Photo and video storage |
-| `db` | `/var/lib/postgresql/data` | PostgreSQL database |
-| `model-cache` | `/cache` | Machine learning model cache |
-| `startos` | — | StartOS-managed state (`store.json`) |
+| Volume        | Mount Point                | Purpose                              |
+| ------------- | -------------------------- | ------------------------------------ |
+| `upload`      | `/usr/src/app/upload`      | Photo and video storage              |
+| `db`          | `/var/lib/postgresql/data` | PostgreSQL database                  |
+| `model-cache` | `/cache`                   | Machine learning model cache         |
+| `startos`     | —                          | StartOS-managed state (`store.json`) |
 
 **StartOS-specific files:**
 
@@ -81,10 +83,10 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 
 ## Installation and First-Run Flow
 
-| Step | Upstream | StartOS |
-|------|----------|---------|
-| Installation | Docker Compose setup | Install from marketplace |
-| First user | Register via web UI (becomes admin) | Same as upstream |
+| Step               | Upstream                                    | StartOS                                |
+| ------------------ | ------------------------------------------- | -------------------------------------- |
+| Installation       | Docker Compose setup                        | Install from marketplace               |
+| First user         | Register via web UI (becomes admin)         | Same as upstream                       |
 | External libraries | Configure via Settings > External Libraries | Use "Manage External Libraries" action |
 
 **First-run steps:**
@@ -101,22 +103,22 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 
 ### Settings Managed via StartOS Actions
 
-| Setting | Action | Description |
-|---------|--------|-------------|
-| SMTP | Configure SMTP | Email notifications |
-| Primary URL | Set Primary URL | External domain used for public share links |
+| Setting            | Action                    | Description                                 |
+| ------------------ | ------------------------- | ------------------------------------------- |
+| SMTP               | Configure SMTP            | Email notifications                         |
+| Primary URL        | Set Primary URL           | External domain used for public share links |
 | External Libraries | Manage External Libraries | Index photos from File Browser or Nextcloud |
-| Admin Password | Reset Admin Password | Generate new admin credentials |
+| Admin Password     | Reset Admin Password      | Generate new admin credentials              |
 
 ### Settings Forced by StartOS (not editable in Immich UI)
 
 StartOS reasserts the following values on every startup. Editing them in the Immich Admin UI will not persist across restarts.
 
-| Field | Value | Reason |
-|-------|-------|--------|
-| `newVersionCheck.enabled` | `false` | StartOS manages Immich updates; suppresses the "new version available" modal |
-| `backup.database.enabled` | `false` | StartOS backs up the database via `pg_dump`; Immich's internal dumps are duplicate work |
-| `server.externalDomain` | Selected primary URL | Keeps Immich's public share links in sync with a StartOS-known URL |
+| Field                     | Value                | Reason                                                                                  |
+| ------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
+| `newVersionCheck.enabled` | `false`              | StartOS manages Immich updates; suppresses the "new version available" modal            |
+| `backup.database.enabled` | `false`              | StartOS backs up the database via `pg_dump`; Immich's internal dumps are duplicate work |
+| `server.externalDomain`   | Selected primary URL | Keeps Immich's public share links in sync with a StartOS-known URL                      |
 
 The first two are enforced from the very first boot. `server.externalDomain` applies once your admin account exists and a URL has been chosen via the Set Primary URL action.
 
@@ -135,9 +137,9 @@ All other Immich settings are configured through the web interface:
 
 ## Network Access and Interfaces
 
-| Interface | Port | Protocol | Purpose |
-|-----------|------|----------|---------|
-| Web UI | 2283 | HTTP | Immich web interface |
+| Interface | Port | Protocol | Purpose              |
+| --------- | ---- | -------- | -------------------- |
+| Web UI    | 2283 | HTTP     | Immich web interface |
 
 **Access methods (StartOS 0.4.0):**
 
@@ -154,13 +156,13 @@ All other Immich settings are configured through the web interface:
 
 ### Set Primary URL
 
-| Property | Value |
-|----------|-------|
-| ID | `set-primary-url` |
-| Name | Set Primary URL |
-| Visibility | Enabled |
-| Availability | Any status |
-| Purpose | Choose which Immich URL is advertised as the external domain |
+| Property     | Value                                                        |
+| ------------ | ------------------------------------------------------------ |
+| ID           | `set-primary-url`                                            |
+| Name         | Set Primary URL                                              |
+| Visibility   | Enabled                                                      |
+| Availability | Any status                                                   |
+| Purpose      | Choose which Immich URL is advertised as the external domain |
 
 Immich embeds its external domain in public share links (albums, assets). This action lets you pick a URL from the available non-local interfaces (LAN IP, `.local`, Tor, custom domains). On first install the `.local` URL is selected by default. If the previously selected URL is removed (e.g., Tor disabled, custom domain deleted), a critical task prompts you to pick a new one.
 
@@ -168,13 +170,13 @@ Immich embeds its external domain in public share links (albums, assets). This a
 
 ### Configure SMTP
 
-| Property | Value |
-|----------|-------|
-| ID | `configure-smtp` |
-| Name | Configure SMTP |
-| Visibility | Enabled |
-| Availability | Any status |
-| Purpose | Enable email notifications |
+| Property     | Value                      |
+| ------------ | -------------------------- |
+| ID           | `configure-smtp`           |
+| Name         | Configure SMTP             |
+| Visibility   | Enabled                    |
+| Availability | Any status                 |
+| Purpose      | Enable email notifications |
 
 **Options:**
 
@@ -186,13 +188,13 @@ Immich embeds its external domain in public share links (albums, assets). This a
 
 ### Manage External Libraries
 
-| Property | Value |
-|----------|-------|
-| ID | `external-libraries` |
-| Name | Manage External Libraries |
-| Visibility | Enabled |
-| Availability | Any status |
-| Purpose | Index photos from other StartOS services |
+| Property     | Value                                    |
+| ------------ | ---------------------------------------- |
+| ID           | `external-libraries`                     |
+| Name         | Manage External Libraries                |
+| Visibility   | Enabled                                  |
+| Availability | Any status                               |
+| Purpose      | Index photos from other StartOS services |
 
 **Supported sources:**
 
@@ -208,13 +210,13 @@ Immich embeds its external domain in public share links (albums, assets). This a
 
 ### Reset Admin Password
 
-| Property | Value |
-|----------|-------|
-| ID | `reset-admin-password` |
-| Name | Reset Admin Password |
-| Visibility | Enabled |
-| Availability | Only when running |
-| Purpose | Generate new admin credentials |
+| Property     | Value                          |
+| ------------ | ------------------------------ |
+| ID           | `reset-admin-password`         |
+| Name         | Reset Admin Password           |
+| Visibility   | Enabled                        |
+| Availability | Only when running              |
+| Purpose      | Generate new admin credentials |
 
 **Output:** Displays the new randomly generated password.
 
@@ -224,23 +226,23 @@ Immich embeds its external domain in public share links (albums, assets). This a
 
 ### File Browser
 
-| Property | Value |
-|----------|-------|
-| Required | Optional |
-| Version constraint | `>= 2.62.2` |
-| Health checks | None |
-| Mounted volumes | `data` → `/mnt/filebrowser` (read-only) |
-| Purpose | External library source for indexing photos stored in File Browser |
+| Property           | Value                                                              |
+| ------------------ | ------------------------------------------------------------------ |
+| Required           | Optional                                                           |
+| Version constraint | `>= 2.62.2`                                                        |
+| Health checks      | None                                                               |
+| Mounted volumes    | `data` → `/mnt/filebrowser` (read-only)                            |
+| Purpose            | External library source for indexing photos stored in File Browser |
 
 ### Nextcloud
 
-| Property | Value |
-|----------|-------|
-| Required | Optional |
-| Version constraint | `>= 32.0.7` |
-| Health checks | None |
-| Mounted volumes | `nextcloud` → `/mnt/nextcloud` (read-only) |
-| Purpose | External library source for indexing photos stored in Nextcloud |
+| Property           | Value                                                           |
+| ------------------ | --------------------------------------------------------------- |
+| Required           | Optional                                                        |
+| Version constraint | `>= 32.0.7`                                                     |
+| Health checks      | None                                                            |
+| Mounted volumes    | `nextcloud` → `/mnt/nextcloud` (read-only)                      |
+| Purpose            | External library source for indexing photos stored in Nextcloud |
 
 Dependencies are only needed if you configure external libraries pointing to those services.
 
@@ -271,12 +273,12 @@ Dependencies are only needed if you configure external libraries pointing to tho
 
 ## Health Checks
 
-| Check | Display Name | Method |
-|-------|--------------|--------|
-| PostgreSQL | (internal) | `pg_isready` |
-| Valkey | (internal) | `valkey-cli ping` |
-| Machine Learning | (internal) | Port 3003 listening |
-| Web Interface | Web Interface | Port 2283 listening (40s grace) |
+| Check            | Display Name  | Method                          |
+| ---------------- | ------------- | ------------------------------- |
+| PostgreSQL       | (internal)    | `pg_isready`                    |
+| Valkey           | (internal)    | `valkey-cli ping`               |
+| Machine Learning | (internal)    | Port 3003 listening             |
+| Web Interface    | Web Interface | Port 2283 listening (40s grace) |
 
 **Messages:**
 
@@ -327,7 +329,7 @@ images:
   immich-ml: ghcr.io/immich-app/immich-machine-learning
   postgres: ghcr.io/immich-app/postgres
   valkey: valkey/valkey
-architectures: [x86_64, aarch64]  # GPU variants (cuda, rocm, openvino) are x86_64 only
+architectures: [x86_64, aarch64] # GPU variants (cuda, rocm, openvino) are x86_64 only
 variants: [generic, cuda, rocm, openvino]
 volumes:
   upload: /usr/src/app/upload
