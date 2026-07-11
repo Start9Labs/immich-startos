@@ -47,14 +47,16 @@ All images are upstream unmodified. PostgreSQL uses Immich's custom image with v
 
 ### Hardware Acceleration Variants
 
-Pick the variant that matches your hardware. Only the machine-learning image differs between variants; server, postgres, and valkey are identical.
+StartOS selects the variant **automatically** from the GPU it detects on the host (via each variant's manifest `hardwareRequirements`); there is no manual picker. Only the machine-learning image differs between variants; server, postgres, and valkey are identical.
 
-| Variant | ML Image Tag Suffix | Requires | Arches | NVIDIA runtime |
-|---------|---------------------|----------|--------|----------------|
-| `generic` | *(none)* — CPU | — | x86_64, aarch64 | No |
-| `cuda` | `-cuda` | NVIDIA GPU | x86_64 | Yes |
-| `rocm` | `-rocm` | AMD GPU | x86_64 | No |
-| `openvino` | `-openvino` | Intel GPU | x86_64 | No |
+| Variant | ML Image Tag Suffix | Auto-selected for | Arches | NVIDIA runtime |
+|---------|---------------------|-------------------|--------|----------------|
+| `generic` | *(none)* — CPU | Any host with no matching GPU (default) | x86_64, aarch64 | No |
+| `cuda` | `-cuda` | NVIDIA GPU (`nvidia` driver) | x86_64 | Yes |
+| `rocm` | `-rocm` | Discrete AMD GPU (`amdgpu` driver, Navi/Radeon RX/Instinct) | x86_64 | No |
+| `openvino` | `-openvino` | Intel GPU (`i915` driver) | x86_64 | No |
+
+**AMD GPUs — discrete only:** the `rocm` variant is offered only to *discrete* AMD GPUs. ROCm's MIGraphX backend crashes during model compilation on integrated Radeon graphics (e.g. the Radeon 680M in Ryzen APUs), so those hosts get the CPU-only `generic` variant instead. Selection matches the GPU product name in `rocm`'s `hardwareRequirements`, so a discrete card StartOS doesn't recognize also falls back to `generic` — sideload the `-rocm` s9pk manually if you need GPU ML on such a card.
 
 **Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
 
