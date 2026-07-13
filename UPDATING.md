@@ -16,15 +16,20 @@ The pin is `IMMICH_VERSION` near the top of `startos/manifest/index.ts`. It feed
 
 ### Postgres sidecar
 
-The image `ghcr.io/immich-app/postgres` is built by Immich themselves. The canonical version list lives in their base-images repo.
+The image `ghcr.io/immich-app/postgres` is built by Immich themselves. The pin lives at `images.postgres.source.dockerTag` in `startos/manifest/index.ts`.
 
-GitHub: <https://github.com/immich-app/base-images>
+**The source of truth is the `database:` image in Immich's own `docker/docker-compose.yml`, at the release tag we ship — not `base-images/postgres/versions.yaml`.**
 
 ```sh
-gh api repos/immich-app/base-images/contents/postgres/versions.yaml --jq '.content' | base64 -d
+gh api "repos/immich-app/immich/contents/docker/docker-compose.yml?ref=v${IMMICH_VERSION}" \
+  --jq '.content' | base64 -d | grep 'immich-app/postgres'
 ```
 
-That YAML lists the supported Postgres majors plus the VectorChord and pgvector(s) component versions. The Docker tag format is `<pg-major>-vectorchord<vc>-pgvectors<pv>` (older variant; newer images may use `pgvector` instead of `pgvectors` — match whatever the file emits). The pin lives at `images.postgres.source.dockerTag` in `startos/manifest/index.ts`.
+Match that tag (dropping the `@sha256:…` digest). `base-images` publishes images ahead of — and independently of — what the server release actually deploys and tests against; as of Immich v3.0.2, `versions.yaml` emits `14-vectorchord1.1.1-pgvector0.8.5` while both `v3.0.2` and `main` still pin `14-vectorchord0.4.3-pgvectors0.2.0`. Tracking the YAML instead of the compose file puts users on a database image Immich has never shipped.
+
+The tag encodes `<pg-major>-vectorchord<vc>-pgvectors<pgvecto.rs>` — note `pgvectors` is **pgvecto.rs** (the `vectors` extension), a different extension from pgvector (`vector`), which is always present via the `pgvector/pgvector` base image. Newer base-images tags use `-pgvector<v>` because pgvecto.rs was dropped from the image and the pgvector version surfaced in its place.
+
+**A VectorChord version change is a database migration, not a pin refresh.** Immich validates the extension version at boot (`VECTORCHORD_VERSION_RANGE` in `server/src/constants.ts`) and, if the image's version is newer than what's installed, `DatabaseRepository.updateVectorExtension` automatically drops both vector indexes, runs `ALTER EXTENSION vchord UPDATE`, rewrites the `embedding` columns, and rebuilds the `clip_index` / `face_index` indexes — a long, unattended operation on a real photo library. Do not bump VectorChord across a major (0.x → 1.x) just because a newer tag exists. See `TODO.md`.
 
 ### Valkey sidecar
 
