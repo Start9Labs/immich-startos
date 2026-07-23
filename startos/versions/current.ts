@@ -1,18 +1,33 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.0.1:1',
+  version: '3.0.3:0',
   releaseNotes: {
-    en_US:
-      'Fixes unreliable machine learning on servers with integrated AMD graphics. The AMD GPU (ROCm) variant is now installed only on discrete AMD GPUs; hosts whose only AMD graphics are integrated (such as the Radeon 680M in many Ryzen mini-PCs) now use the reliable CPU variant instead.',
-    es_ES:
-      'Corrige el aprendizaje automático poco fiable en servidores con gráficos AMD integrados. La variante de GPU AMD (ROCm) ahora se instala solo en GPU AMD dedicadas; los equipos cuyos únicos gráficos AMD son integrados (como la Radeon 680M de muchos mini-PC Ryzen) ahora usan la variante de CPU, más fiable.',
-    de_DE:
-      'Behebt unzuverlässiges maschinelles Lernen auf Servern mit integrierter AMD-Grafik. Die AMD-GPU-Variante (ROCm) wird jetzt nur noch auf dedizierten AMD-GPUs installiert; Hosts, deren einzige AMD-Grafik integriert ist (etwa die Radeon 680M in vielen Ryzen-Mini-PCs), nutzen nun die zuverlässige CPU-Variante.',
-    pl_PL:
-      'Naprawia niestabilne uczenie maszynowe na serwerach ze zintegrowaną grafiką AMD. Wariant GPU AMD (ROCm) jest teraz instalowany tylko na dedykowanych układach AMD; hosty, których jedyna grafika AMD jest zintegrowana (np. Radeon 680M w wielu mini-PC Ryzen), korzystają teraz z niezawodnego wariantu CPU.',
-    fr_FR:
-      "Corrige un apprentissage automatique peu fiable sur les serveurs dotés d'un GPU AMD intégré. La variante GPU AMD (ROCm) n'est désormais installée que sur les GPU AMD dédiés ; les hôtes dont la seule puce graphique AMD est intégrée (comme la Radeon 680M de nombreux mini-PC Ryzen) utilisent maintenant la variante CPU, plus fiable.",
+    en_US: `Updated Immich to 3.0.3, a maintenance release on the 3.0 line.
+
+This release also migrates the package to start-sdk 2.0 (requires StartOS 0.4.0-beta.10 or later).
+
+Full release notes: https://github.com/immich-app/immich/releases/tag/v3.0.3`,
+    es_ES: `Actualiza Immich a 3.0.3, una versión de mantenimiento de la línea 3.0.
+
+Esta versión también migra el paquete a start-sdk 2.0 (requiere StartOS 0.4.0-beta.10 o posterior).
+
+Notas de la versión completas: https://github.com/immich-app/immich/releases/tag/v3.0.3`,
+    de_DE: `Aktualisiert Immich auf 3.0.3, eine Wartungsversion der 3.0-Reihe.
+
+Diese Version stellt das Paket außerdem auf start-sdk 2.0 um (erfordert StartOS 0.4.0-beta.10 oder neuer).
+
+Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.0.3`,
+    pl_PL: `Aktualizuje Immich do 3.0.3, wydania konserwacyjnego linii 3.0.
+
+Ta wersja przenosi też pakiet na start-sdk 2.0 (wymaga StartOS 0.4.0-beta.10 lub nowszego).
+
+Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.0.3`,
+    fr_FR: `Met à jour Immich vers 3.0.3, une version de maintenance de la série 3.0.
+
+Cette version fait également passer le paquet à start-sdk 2.0 (nécessite StartOS 0.4.0-beta.10 ou une version ultérieure).
+
+Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.0.3`,
   },
   migrations: {
     up: async ({ effects }) => {},

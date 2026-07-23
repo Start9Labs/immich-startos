@@ -34,16 +34,3 @@ export const nextcloudDescription = {
   pl_PL: 'Używany do indeksowania zdjęć i filmów z Nextcloud',
   fr_FR: 'Utilisé pour indexer les photos et vidéos depuis Nextcloud',
 }
-
-export const installAlert = {
-  en_US:
-    'Immich requires significant system resources, especially when machine learning features are active. Facial recognition and smart search will use substantial CPU and RAM during initial indexing of your photo library.',
-  es_ES:
-    'Immich requiere recursos significativos del sistema, especialmente cuando las funciones de aprendizaje automático están activas. El reconocimiento facial y la búsqueda inteligente utilizarán CPU y RAM considerables durante la indexación inicial de su biblioteca de fotos.',
-  de_DE:
-    'Immich benötigt erhebliche Systemressourcen, insbesondere wenn maschinelle Lernfunktionen aktiv sind. Gesichtserkennung und intelligente Suche verwenden während der anfänglichen Indexierung Ihrer Fotobibliothek erhebliche CPU- und RAM-Ressourcen.',
-  pl_PL:
-    'Immich wymaga znacznych zasobów systemowych, szczególnie gdy funkcje uczenia maszynowego są aktywne. Rozpoznawanie twarzy i inteligentne wyszukiwanie będą intensywnie wykorzystywać CPU i RAM podczas początkowego indeksowania biblioteki zdjęć.',
-  fr_FR:
-    "Immich nécessite des ressources système importantes, surtout lorsque les fonctionnalités d'apprentissage automatique sont actives. La reconnaissance faciale et la recherche intelligente utiliseront beaucoup de CPU et de RAM lors de l'indexation initiale de votre photothèque.",
-}

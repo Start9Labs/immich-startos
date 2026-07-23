@@ -5,9 +5,19 @@ import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
 
+// Host ids (the sdk.MultiHost.of groups) — distinct from the interface ids exported on them.
+export const uiHostId = 'ui-multi'
+export const uiInterfaceId = 'ui'
+
 export async function getNonLocalUrls(effects: T.Effects): Promise<string[]> {
-  return sdk.serviceInterface
-    .getOwn(effects, 'ui', (i) => i?.addressInfo?.nonLocal.format() || [])
+  return sdk.host
+    .getOwn(effects, uiHostId, (host) => {
+      if (!host) return []
+      const ui = Object.values(host.bindings)
+        .flatMap((b) => Object.values(b.interfaces))
+        .find((i) => i.id === uiInterfaceId)
+      return ui?.addressInfo.nonLocal.format() || []
+    })
     .const()
 }
 export const POSTGRES_PATH = '/var/lib/postgresql' as const
@@ -86,14 +96,14 @@ export async function createCoreSubs(
   serverMountsArg: Parameters<typeof sdk.SubContainer.of>[2],
 ) {
   return {
-    postgresSub: await getPostgresSub(effects),
-    valkeySub: await sdk.SubContainer.of(
+    postgresSub: getPostgresSub(effects),
+    valkeySub: sdk.SubContainer.of(
       effects,
       { imageId: 'valkey' },
       sdk.Mounts.of(),
       'valkey',
     ),
-    mlSub: await sdk.SubContainer.of(
+    mlSub: sdk.SubContainer.of(
       effects,
       { imageId: 'immich-ml' },
       sdk.Mounts.of().mountVolume({
@@ -104,7 +114,7 @@ export async function createCoreSubs(
       }),
       'immich-ml',
     ),
-    serverSub: await sdk.SubContainer.of(
+    serverSub: sdk.SubContainer.of(
       effects,
       { imageId: 'immich-server' },
       serverMountsArg,

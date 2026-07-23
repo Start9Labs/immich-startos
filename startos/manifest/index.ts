@@ -1,7 +1,6 @@
 import { setupManifest } from '@start9labs/start-sdk'
 import {
   filebrowserDescription,
-  installAlert,
   long,
   nextcloudDescription,
   short,
@@ -12,7 +11,7 @@ const variant = process.env.VARIANT || 'generic'
 type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> }
 const mutable = <T>(value: T): Mutable<T> => value as Mutable<T>
 
-const IMMICH_VERSION = 'v3.0.1'
+const IMMICH_VERSION = 'v3.0.3'
 
 const mlImageConfigs = {
   generic: {
@@ -68,8 +67,16 @@ const serverImageConfigs = {
   },
 } as const
 
+// ROCm is unreliable on integrated Radeon (e.g. the 680M in Ryzen APUs), so
+// match only discrete AMD GPUs by product name. StartOS's regex engine has no
+// lookahead, so this is a positive allowlist rather than an iGPU exclusion.
+const AMD_DISCRETE_GPU =
+  '(?i)(Navi\\s*\\d+|Radeon\\s*RX\\s*\\d{3}|Radeon\\s*RX\\s*Vega|Radeon\\s*VII|Instinct)'
+
+// hardwareRequirements per accelerator variant. StartOS auto-selects the most
+// hardware-specific compatible variant per host; variants without an entry here
+// (generic) carry no device requirement and act as the CPU fallback.
 const hwDevices = {
-  generic: [],
   cuda: [
     {
       class: 'display' as const,
@@ -82,9 +89,7 @@ const hwDevices = {
   rocm: [
     {
       class: 'display' as const,
-      // Discrete-AMD allowlist: ROCm crashes on integrated Radeon (e.g. 680M); iGPUs lack these product names and fall back to the generic CPU variant.
-      product:
-        '(?i)(Navi\\s*\\d+|Radeon\\s*RX\\s*\\d{3}|Radeon\\s*RX\\s*Vega|Radeon\\s*VII|Instinct)',
+      product: AMD_DISCRETE_GPU,
       vendor: null,
       driver: 'amdgpu',
       description:
@@ -135,10 +140,7 @@ export const manifest = setupManifest({
   },
   hardwareAcceleration: true,
   hardwareRequirements: {
-    device: [...(hwDevices[variantKey] ?? hwDevices.generic)],
-  },
-  alerts: {
-    install: installAlert,
+    device: [...(hwDevices[variant as keyof typeof hwDevices] ?? [])],
   },
   dependencies: {
     filebrowser: {
