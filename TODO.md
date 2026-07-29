@@ -5,7 +5,7 @@
 `base-images/postgres/versions.yaml` now emits `14-vectorchord1.1.1-pgvector0.8.5`, but the pin
 stays at `14-vectorchord0.4.3-pgvectors0.2.0`. Deliberately. Blockers:
 
-- **Immich has not adopted it.** `v3.0.2` and `main` both still sha-pin the 0.4.3 image in
+- **Immich has not adopted it.** `v3.1.0` and `main` both still sha-pin the 0.4.3 image in
   `docker/docker-compose.yml`. The base-images PR that produced the new tag
   (immich-app/base-images#353) opens with "Opening for discussion. I am not sure the right way
   to do this."
