@@ -28,7 +28,7 @@ export const connectSources = sdk.Action.withInput(
   async ({ effects }) => ({
     name: i18n('Connect Photo Sources'),
     description: i18n(
-      'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Changes apply on next restart.',
+      'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Immich restarts automatically to apply the change.',
     ),
     warning: null,
     allowedStatuses: 'any',

@@ -4,7 +4,12 @@ import { storeJson } from './fileModels/store.json'
 import { sourceExposed } from './utils'
 
 export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
-  const store = await storeJson.read().const(effects)
+  const store = await storeJson
+    .read((s) => ({
+      externalLibraries: s.externalLibraries,
+      exposedSources: s.exposedSources,
+    }))
+    .const(effects)
   const libs = store?.externalLibraries || []
   const exposed = store?.exposedSources
 

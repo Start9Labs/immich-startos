@@ -29,8 +29,6 @@ const dict = {
   'File Browser': 20,
   'Configure external photo libraries from Nextcloud or File Browser': 21,
   'Manage External Libraries': 25,
-  'The service where your photos and videos are stored. Only sources you have connected in the Connect Photo Sources action can be selected here — connect one there first.': 39,
-  'Connect a source first using the Connect Photo Sources action.': 40,
   'Immich User': 41,
   'The Immich user who owns this library — their timeline shows the photos. Defaults to the admin and cannot be changed after the library is created.': 42,
   'Removing a library here deletes it from Immich (its photo records — not the source files). The owner is set when the library is created and cannot be changed afterward.': 43,
@@ -38,9 +36,6 @@ const dict = {
   'Custom paths': 45,
   'Import Paths': 46,
   'Where the photos are. Connect File Browser or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.': 47,
-  'For File Browser and Nextcloud, the folders to index (e.g. "Photos"). For Custom paths, full import paths.': 48,
-  'Folders to index, one per line (e.g. Photos).': 49,
-  'Full import paths, one per line (e.g. /mnt/nextcloud/data/<user>/files/Photos).': 50,
 
   // actions/resetAdminPassword.ts
   'Reset Admin Password': 26,
@@ -55,7 +50,7 @@ const dict = {
 
   // actions/connectSources.ts
   'Connect Photo Sources': 35,
-  'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Changes apply on next restart.': 36,
+  'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Immich restarts automatically to apply the change.': 36,
   'Allow Immich to read photos and videos stored in File Browser.': 37,
   'Allow Immich to read photos and videos stored in Nextcloud.': 38,
 
