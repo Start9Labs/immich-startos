@@ -56,4 +56,5 @@ The pin lives at `images.valkey.source.dockerTag` in `startos/manifest/index.ts`
    - `SystemMetadataKey.SystemConfig` still equals `'system-config'` (`server/src/enum.ts`).
    - Paths `newVersionCheck.enabled` and `backup.database.enabled` still booleans with the same meaning.
    - Config still stored as a partial merged with defaults (`server/src/utils/config.ts`: `buildConfig`, `updateConfig`).
+
    If any of those move, update `enforceSystemConfigDefaults` accordingly.

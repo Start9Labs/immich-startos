@@ -1,7 +1,7 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.1.0:0',
+  version: '3.1.0:1',
   releaseNotes: {
     en_US: `Updated Immich to 3.1.0.
 
@@ -12,7 +12,9 @@ export const current = VersionInfo.of({
 - Many fixes, including zero-byte image uploads, locked-folder permissions, and video playback under the default content security policy.
 - Note: the Immich mobile app has dropped support for iOS 14.
 
-Full release notes: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+Full release notes: https://github.com/immich-app/immich/releases/tag/v3.1.0
+
+This release also reworks external photo libraries. New Connect Photo Sources action grants Immich read-only access to File Browser or Nextcloud; Manage External Libraries is now a live, two-way editor of Immich's libraries — assign each to any Immich user, index multiple folders, and rename, edit, or remove them without duplicates or orphans. Libraries created in Immich's own admin UI appear here too; existing libraries keep working, no migration.`,
     es_ES: `Actualiza Immich a 3.1.0.
 
 - Los flujos de trabajo ya pueden filtrar archivos por su ruta en el servidor y por metadatos EXIF.
@@ -22,7 +24,9 @@ Full release notes: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
 - Numerosas correcciones, entre ellas las subidas de imágenes de cero bytes, los permisos de carpetas bloqueadas y la reproducción de vídeo con la política de seguridad de contenido predeterminada.
 - Nota: la aplicación móvil de Immich ha dejado de admitir iOS 14.
 
-Notas de la versión completas: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+Notas de la versión completas: https://github.com/immich-app/immich/releases/tag/v3.1.0
+
+Esta versión también rediseña las bibliotecas de fotos externas. La nueva acción Conectar fuentes de fotos concede a Immich acceso de solo lectura a Explorador de archivos o Nextcloud; Gestionar bibliotecas externas es ahora un editor bidireccional en vivo de las bibliotecas de Immich: asigne cada una a cualquier usuario de Immich, indexe varias carpetas y renombre, edite o elimínelas sin duplicados ni huérfanos. Las bibliotecas creadas en la propia interfaz de administración de Immich también aparecen aquí; las bibliotecas existentes siguen funcionando, sin migración.`,
     de_DE: `Aktualisiert Immich auf 3.1.0.
 
 - Workflows können Dateien jetzt nach ihrem Pfad auf dem Server und nach EXIF-Metadaten filtern.
@@ -32,7 +36,9 @@ Notas de la versión completas: https://github.com/immich-app/immich/releases/ta
 - Zahlreiche Fehlerbehebungen, unter anderem bei Uploads von Bildern mit null Byte, bei Berechtigungen für gesperrte Ordner und bei der Videowiedergabe unter der standardmäßigen Content Security Policy.
 - Hinweis: Die mobile Immich-App unterstützt iOS 14 nicht mehr.
 
-Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.1.0
+
+Diese Version überarbeitet außerdem externe Fotobibliotheken. Die neue Aktion „Fotoquellen verbinden“ gewährt Immich schreibgeschützten Zugriff auf Dateibrowser oder Nextcloud; „Externe Bibliotheken verwalten“ ist jetzt ein bidirektionaler Live-Editor der Immich-Bibliotheken: Weisen Sie jede einem beliebigen Immich-Benutzer zu, indizieren Sie mehrere Ordner und benennen, bearbeiten oder entfernen Sie sie ohne Duplikate oder Waisen. In Immichs eigener Administrationsoberfläche erstellte Bibliotheken erscheinen ebenfalls hier; bestehende Bibliotheken funktionieren weiter, ohne Migration.`,
     pl_PL: `Aktualizuje Immich do 3.1.0.
 
 - Przepływy pracy mogą teraz filtrować pliki według ścieżki na serwerze oraz według metadanych EXIF.
@@ -42,7 +48,9 @@ Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/ta
 - Wiele poprawek, w tym przesyłanie obrazów o zerowym rozmiarze, uprawnienia zablokowanych folderów oraz odtwarzanie wideo przy domyślnej polityce bezpieczeństwa treści.
 - Uwaga: aplikacja mobilna Immich nie obsługuje już systemu iOS 14.
 
-Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.1.0
+
+Ta wersja przebudowuje też zewnętrzne biblioteki zdjęć. Nowa akcja „Połącz źródła zdjęć” daje Immich dostęp tylko do odczytu do Przeglądarki plików lub Nextcloud; „Zarządzaj bibliotekami zewnętrznymi” to teraz dwukierunkowy edytor bibliotek Immich na żywo: przypisz każdą do dowolnego użytkownika Immich, indeksuj wiele folderów oraz zmieniaj nazwy, edytuj lub usuwaj je bez duplikatów i sierot. Biblioteki utworzone w panelu administracyjnym Immich również się tu pojawiają; istniejące biblioteki działają dalej, bez migracji.`,
     fr_FR: `Met à jour Immich vers 3.1.0.
 
 - Les flux de travail peuvent désormais filtrer les fichiers selon leur chemin sur le serveur et selon les métadonnées EXIF.
@@ -52,7 +60,9 @@ Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v
 - De nombreuses corrections, notamment sur les envois d'images de zéro octet, les permissions des dossiers verrouillés et la lecture vidéo avec la politique de sécurité du contenu par défaut.
 - Remarque : l'application mobile Immich ne prend plus en charge iOS 14.
 
-Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.1.0
+
+Cette version refond également les bibliothèques de photos externes. La nouvelle action « Connecter des sources de photos » donne à Immich un accès en lecture seule au Navigateur de fichiers ou à Nextcloud ; « Gérer les bibliothèques externes » est désormais un éditeur bidirectionnel en direct des bibliothèques d'Immich : attribuez chacune à n'importe quel utilisateur Immich, indexez plusieurs dossiers, et renommez, modifiez ou supprimez-les sans doublons ni orphelins. Les bibliothèques créées dans l'interface d'administration d'Immich apparaissent aussi ici ; les bibliothèques existantes continuent de fonctionner, sans migration.`,
   },
   migrations: {
     up: async ({ effects }) => {},

@@ -29,6 +29,13 @@ const dict = {
   'File Browser': 20,
   'Configure external photo libraries from Nextcloud or File Browser': 21,
   'Manage External Libraries': 25,
+  'Immich User': 41,
+  'The Immich user who owns this library — their timeline shows the photos. Defaults to the admin and cannot be changed after the library is created.': 42,
+  'Removing a library here deletes it from Immich (its photo records — not the source files). The owner is set when the library is created and cannot be changed afterward.': 43,
+  Folders: 44,
+  'Custom paths': 45,
+  'Import Paths': 46,
+  'Where the photos are. Connect File Browser or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.': 47,
 
   // actions/resetAdminPassword.ts
   'Reset Admin Password': 26,
@@ -41,10 +48,16 @@ const dict = {
   'Configure SMTP': 22,
   'Use system or custom SMTP credentials for Immich email notifications': 23,
 
+  // actions/connectSources.ts
+  'Connect Photo Sources': 35,
+  'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Immich restarts automatically to apply the change.': 36,
+  'Allow Immich to read photos and videos stored in File Browser.': 37,
+  'Allow Immich to read photos and videos stored in Nextcloud.': 38,
+
   // actions/setPrimaryUrl.ts
   URL: 31,
   'Set Primary URL': 32,
-  'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Changes apply on next restart.': 33,
+  'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Immich restarts automatically to apply the change.': 33,
 
   // init/taskSetPrimaryUrl.ts
   'Primary URL removed. Select a new primary URL.': 34,
