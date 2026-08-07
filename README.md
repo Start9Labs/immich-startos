@@ -323,11 +323,12 @@ A dependency is pulled in only when its source is connected — either via the *
 ## Limitations and Differences
 
 1. **External library sources** — The Manage External Libraries action offers File Browser and Nextcloud as guided sources (only once connected), plus a **Custom paths** option for anything else. Paths still only resolve to data mounted into the container (File Browser / Nextcloud), so Custom paths is for unusual shapes (multiple users, mixed sources), not arbitrary host directories. Every Immich library is shown and editable here, including ones created in Immich's own UI.
-2. **SMTP via action** — Configure through StartOS action rather than Immich web UI
-3. **No custom upload paths** — Upload location is fixed
-4. **Upstream version-check banner suppressed** — StartOS manages Immich updates, so `newVersionCheck.enabled` is forced to `false` in the system config on every startup to hide the "new version available" modal.
-5. **Immich's internal database backup disabled** — `backup.database.enabled` is forced to `false` because StartOS already dumps the database via `pg_dump` during its backup flow.
-6. **External domain managed via action** — `server.externalDomain` is set to the URL selected in the Set Primary URL action; editing it in the Immich Admin UI does not persist.
+2. **A library pointing at a disconnected source blocks saving the library form** — Immich validates import paths on update and rejects a missing one (`400 Invalid import path: Path does not exist (ENOENT)`). Manage External Libraries `PUT`s every submitted row, so if a source is disconnected while a library still references it, _any_ save of that form fails on that row and no other edit in the same save is applied. Recover by reconnecting the source, or by removing the stale library's row — removed rows are deleted, not `PUT`, so that path still works. Verified on StartOS 0.4.0.1; see `TODO.md`.
+3. **SMTP via action** — Configure through StartOS action rather than Immich web UI
+4. **No custom upload paths** — Upload location is fixed
+5. **Upstream version-check banner suppressed** — StartOS manages Immich updates, so `newVersionCheck.enabled` is forced to `false` in the system config on every startup to hide the "new version available" modal.
+6. **Immich's internal database backup disabled** — `backup.database.enabled` is forced to `false` because StartOS already dumps the database via `pg_dump` during its backup flow.
+7. **External domain managed via action** — `server.externalDomain` is set to the URL selected in the Set Primary URL action; editing it in the Immich Admin UI does not persist.
 
 ---
 
