@@ -205,7 +205,7 @@ Toggle **File Browser** and/or **Nextcloud** on to mount that service's volume r
 
 Backwards compatibility: a library that pre-dates this action keeps its source connected automatically (the source is treated as connected whenever a library already uses it), so existing installs need no action after upgrade.
 
-Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). **Note:** Changes apply on next restart.
+Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). **Note:** `exposedSources` is part of `main`'s reactive store read, so saving this action rebuilds the server mounts and restarts the stack automatically — no manual restart.
 
 ### Manage External Libraries
 

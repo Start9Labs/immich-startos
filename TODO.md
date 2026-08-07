@@ -23,16 +23,8 @@ in `server/src/services/database.service.ts`) — our daemon chain does not rest
 
 ## Legacy store cleanup (optional)
 
-`store.externalLibraries` is vestigial — written by no one now, read only as the
-backwards-compat OR in `sourceExposed` (mount + variant gating). A one-time `up`
-migration could backfill `exposedSources` from it and clear it, making
-`exposedSources` the sole mount driver. Not required; purely tidiness.
-
-## Done this session
-
-- Connect Photo Sources action (decoupled mount), connect-first picker.
-- Live two-way mirror of Immich libraries (id-correlated create/update/delete),
-  owner dropdown, only-running, persistent API key.
-- Multi-folder libraries + **Custom paths** catch-all so no library is ever
-  silently hidden (fixes: adding a second folder made a library disappear).
-- Nextcloud user is a dropdown (cached list ∪ existing-library users).
+`store.externalLibraries` is vestigial — nothing writes it, and it is read only
+as the pre-`exposedSources` fallback in `sourceExposed` (mount + variant
+gating), which an install stops consulting the moment it saves Connect Photo
+Sources. A one-time `up` migration could backfill `exposedSources` from it and
+drop the key entirely. Not required; purely tidiness.

@@ -209,6 +209,10 @@ const customVariant = {
 }
 
 export const inputSpec = InputSpec.of({
+  // The library ids Immich had when this form was rendered. Deletion is scoped
+  // to these, so a library created in Immich's own UI (or another session)
+  // after the form opened isn't destroyed by a save that never showed it.
+  knownIds: Value.hidden(z.array(z.string()).nullish()),
   externalLibraries: Value.list(
     sdk.List.obj(
       { name: i18n('External Libraries') },
@@ -310,7 +314,7 @@ export const externalLibraries = sdk.Action.withInput(
     const legacyLibs = store?.externalLibraries || []
 
     const apiKey = await getOrMintApiKey(effects)
-    if (!apiKey) return { externalLibraries: [] }
+    if (!apiKey) return { knownIds: [], externalLibraries: [] }
 
     const libs = await immichApi<ImmichLibrary[]>('/libraries', apiKey)
     const out: LibraryRow[] = libs.map((lib) => ({
@@ -319,7 +323,7 @@ export const externalLibraries = sdk.Action.withInput(
       name: lib.name,
       source: parseLibrary(lib.importPaths, exposed, legacyLibs),
     }))
-    return { externalLibraries: out }
+    return { knownIds: libs.map((l) => l.id), externalLibraries: out }
   },
 
   // Apply the form back to Immich, correlating by id: create (no id), update
@@ -360,11 +364,15 @@ export const externalLibraries = sdk.Action.withInput(
       }
     }
 
-    // Delete any Immich library the user removed from the form.
+    // Delete the libraries the user removed from the form, scoped to the ones
+    // the form actually rendered so anything created in Immich since it opened
+    // survives. A form with no `knownIds` at all predates that field; fall back
+    // to deleting everything unsubmitted rather than silently deleting nothing.
+    const rendered = input.knownIds ? new Set(input.knownIds) : null
     for (const lib of current) {
-      if (!submittedIds.has(lib.id)) {
-        await immichApi(`/libraries/${lib.id}`, apiKey, { method: 'DELETE' })
-      }
+      if (submittedIds.has(lib.id)) continue
+      if (rendered && !rendered.has(lib.id)) continue
+      await immichApi(`/libraries/${lib.id}`, apiKey, { method: 'DELETE' })
     }
 
     return null

@@ -21,7 +21,17 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const postgresEnv = await getPostgresEnv(effects)
 
-  const store = await storeJson.read().const(effects)
+  // Project to the keys main actually uses: the oneshots below merge `apiKey`
+  // and `nextcloudUsers` into this same file, and a const over the whole store
+  // would tear down and restart the entire stack on every one of those writes.
+  const store = await storeJson
+    .read((s) => ({
+      externalLibraries: s.externalLibraries,
+      exposedSources: s.exposedSources,
+      primaryUrl: s.primaryUrl,
+      smtp: s.smtp,
+    }))
+    .const(effects)
   if (!store) throw new Error('store.json not found')
 
   const libs = store.externalLibraries || []
@@ -141,6 +151,9 @@ export const main = sdk.setupMain(async ({ effects }) => {
       // contain a `files` dir) so the Manage External Libraries Nextcloud-user
       // dropdown can read them cheaply at form-render time — the action context
       // can't see the mount, only the server container can.
+      //
+      // Ordered after ensure-api-key because both merge into store.json, and
+      // concurrent read-modify-write merges can drop each other's key.
       .addOneshot('cache-nextcloud-users', {
         subcontainer: serverSub,
         exec: {
@@ -163,7 +176,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
             return null
           },
         },
-        requires: ['immich-server'],
+        requires: ['immich-server', 'ensure-api-key'],
       })
       // External libraries are NOT reconciled here. They live in Immich's DB
       // (which persists across restarts and is captured in backups) and are
