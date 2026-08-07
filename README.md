@@ -155,6 +155,8 @@ All other Immich settings are configured through the web interface:
 
 ## Actions (StartOS UI)
 
+Set Primary URL, Configure SMTP, and Connect Photo Sources write `store.json` keys that `main` reads reactively (`.const`), so saving any of them while the service is running re-runs `setupMain` and restarts the daemon chain automatically — there is no manual restart step. All three are available with the service stopped too, in which case the change simply applies on next start. Manage External Libraries and Reset Admin Password act on the live Immich API instead and restart nothing.
+
 ### Set Primary URL
 
 | Property     | Value                                                        |
@@ -167,7 +169,7 @@ All other Immich settings are configured through the web interface:
 
 Immich embeds its external domain in public share links (albums, assets). This action lets you pick a URL from the available non-local interfaces (LAN IP, `.local`, Tor, custom domains). On first install the `.local` URL is selected by default. If the previously selected URL is removed (e.g., Tor disabled, custom domain deleted), a critical task prompts you to pick a new one.
 
-**Note:** Changes apply on next restart.
+The saved value is pushed to Immich's `server.externalDomain` by the `apply-system-config` oneshot on the restart that follows.
 
 ### Configure SMTP
 
@@ -185,7 +187,7 @@ Immich embeds its external domain in public share links (albums, assets). This a
 - **System SMTP** — Use StartOS system SMTP server
 - **Custom** — Enter your own SMTP credentials
 
-**Note:** Changes apply on next restart.
+The credentials are pushed to Immich's `notifications.smtp` by the `apply-system-config` oneshot on the restart that follows. Choosing **Disabled** leaves Immich's existing SMTP settings untouched rather than clearing them.
 
 ### Connect Photo Sources
 
@@ -205,7 +207,7 @@ Toggle **File Browser** and/or **Nextcloud** on to mount that service's volume r
 
 Backwards compatibility: a library that pre-dates this action keeps its source connected automatically (the source is treated as connected whenever a library already uses it), so existing installs need no action after upgrade.
 
-Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). **Note:** `exposedSources` is part of `main`'s reactive store read, so saving this action rebuilds the server mounts and restarts the stack automatically — no manual restart.
+Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). Saving rebuilds the server's mounts on the restart that follows. Disconnecting a source in use does not delete its libraries — their paths simply stop resolving, and they fall back to **Custom paths** in Manage External Libraries.
 
 ### Manage External Libraries
 
