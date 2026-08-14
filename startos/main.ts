@@ -12,7 +12,6 @@ import {
   getPostgresEnv,
   immichApi,
   NEXTCLOUD_MOUNTPOINT,
-  sourceExposed,
   withAdminApiKey,
 } from './utils'
 
@@ -21,12 +20,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   const postgresEnv = await getPostgresEnv(effects)
 
-  // Project to the keys main actually uses: the oneshots below merge `apiKey`
-  // and `nextcloudUsers` into this same file, and a const over the whole store
-  // would tear down and restart the entire stack on every one of those writes.
+  // Projected, not whole-store: the oneshots below write `apiKey` and
+  // `nextcloudUsers`, and a const spanning those restarts the stack on each.
   const store = await storeJson
     .read((s) => ({
-      externalLibraries: s.externalLibraries,
       exposedSources: s.exposedSources,
       primaryUrl: s.primaryUrl,
       smtp: s.smtp,
@@ -34,7 +31,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     .const(effects)
   if (!store) throw new Error('store.json not found')
 
-  const libs = store.externalLibraries || []
   const exposed = store.exposedSources
   const primaryUrl = store.primaryUrl
   const smtpStore = store.smtp
@@ -70,11 +66,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     }
   }
 
-  // Build server mounts: always mount upload volume, then mount each exposed
-  // source's volume read-only. Exposure is driven by the Connect Photo Sources
-  // action OR any configured library (see `sourceExposed`) — so mounting is no
-  // longer a side effect of configuring a library: a source can be exposed for
-  // self-service in the Immich admin UI with no StartOS library at all.
   let serverMounts = sdk.Mounts.of().mountVolume({
     volumeId: 'upload',
     mountpoint: '/usr/src/app/upload',
@@ -82,7 +73,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     subpath: null,
   })
 
-  if (sourceExposed('filebrowser', exposed, libs)) {
+  if (exposed?.filebrowser) {
     serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
       dependencyId: 'filebrowser',
       volumeId: 'data',
@@ -91,7 +82,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       readonly: true,
     })
   }
-  if (sourceExposed('nextcloud', exposed, libs)) {
+  if (exposed?.nextcloud) {
     serverMounts = serverMounts.mountDependency<typeof nextcloudManifest>({
       dependencyId: 'nextcloud',
       volumeId: 'nextcloud',
@@ -110,18 +101,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       success: i18n('The web interface is ready'),
       failure: i18n('The web interface is not ready'),
     })
-      // Enforce StartOS-authoritative defaults via direct write to
-      // system_metadata[system-config] — this bypasses Immich's API (which
-      // requires an admin API key) so it works on a fresh install before the
-      // user has completed sign-up.
-      //
-      //   newVersionCheck.enabled = false
-      //     StartOS owns updates, so the "new version available" modal is noise.
-      //   backup.database.enabled = false
-      //     StartOS backs up the DB via pg_dump. Immich's scheduled internal
-      //     dump is duplicate work that slowly fills the upload volume.
-      //
-      // See CLAUDE.md for the version-bump checklist.
+      // Writes system_metadata[system-config] directly rather than through
+      // Immich's API, which is admin-key-gated and so unusable before sign-up.
       .addOneshot('enforce-defaults', {
         subcontainer: postgresSub,
         exec: {
@@ -132,11 +113,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['postgres'],
       })
-      // Ensure a long-lived Immich API key exists (minting/repairing it on
-      // each startup once an admin exists). The Manage External Libraries
-      // action uses it to call the Immich API with a plain fetch — crucially in
-      // the owner dropdown, which is built at form-render time and fetches the
-      // user list live, so newly added users appear without a restart.
       .addOneshot('ensure-api-key', {
         subcontainer: serverSub,
         exec: {
@@ -147,18 +123,14 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['immich-server'],
       })
-      // Cache the Nextcloud usernames (folders under /mnt/nextcloud/data that
-      // contain a `files` dir) so the Manage External Libraries Nextcloud-user
-      // dropdown can read them cheaply at form-render time — the action context
-      // can't see the mount, only the server container can.
-      //
-      // Ordered after ensure-api-key because both merge into store.json, and
-      // concurrent read-modify-write merges can drop each other's key.
+      // The action context can't see the mount, so the usernames are cached here
+      // for its dropdown. Ordered after ensure-api-key: concurrent merges into
+      // store.json can drop each other's key.
       .addOneshot('cache-nextcloud-users', {
         subcontainer: serverSub,
         exec: {
           fn: async () => {
-            if (!sourceExposed('nextcloud', exposed, libs)) {
+            if (!exposed?.nextcloud) {
               await storeJson.merge(effects, { nextcloudUsers: [] })
               return null
             }
@@ -178,24 +150,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['immich-server', 'ensure-api-key'],
       })
-      // External libraries are NOT reconciled here. They live in Immich's DB
-      // (which persists across restarts and is captured in backups) and are
-      // managed live, by id, through the Manage External Libraries action. The
-      // old per-restart re-apply correlated by name, which duplicated libraries
-      // on rename and orphaned them on removal — see actions/externalLibraries.ts.
-      //
-      // Apply user-configurable settings that depend on the Immich API:
-      //
-      //   server.externalDomain = <primaryUrl>
-      //     Immich embeds this in public share links. User picks which URL via
-      //     the Set Primary URL action.
-      //   notifications.smtp = <credentials>
-      //     Only applied when the SMTP action is configured (system/custom).
-      //     When "disabled", SMTP is left untouched — we don't forcibly clear
-      //     whatever the user had previously.
-      //
-      // Enforced defaults (newVersionCheck, backup.database) live in the
-      // enforce-defaults oneshot above — direct DB write, no admin needed.
+      // A "disabled" SMTP selection deliberately leaves Immich's existing
+      // credentials in place rather than clearing them.
       .addOneshot('apply-system-config', {
         subcontainer: serverSub,
         exec: {

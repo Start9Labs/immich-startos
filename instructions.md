@@ -33,6 +33,8 @@ Saving **Set Primary URL**, **Configure SMTP**, or **Connect Photo Sources** res
 
 External libraries managed from StartOS can only be sourced from File Browser or Nextcloud — for anything else, use Immich's own library settings. Connecting a source makes that service's whole volume readable by every Immich administrator, so only connect sources you're comfortable exposing to your Immich admins. Manage External Libraries and Immich's own library settings are two views of the same libraries, so a change in either place shows up in the other; removing a library from the StartOS action deletes it from Immich outright.
 
+If you turn a source off in Connect Photo Sources while a library still points at it, that library's folders stop existing and Immich rejects them — which makes **every** save of Manage External Libraries fail, including edits to unrelated libraries. Either turn the source back on, or remove the stale library's row; removing a row still works.
+
 ### Things StartOS manages for you
 
 A few Immich settings are reasserted by StartOS on every start and cannot be changed from the Immich admin UI:

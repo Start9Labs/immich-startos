@@ -7,12 +7,10 @@ import {
   getOrMintApiKey,
   immichApi,
   NEXTCLOUD_MOUNTPOINT,
-  sourceExposed,
 } from '../utils'
 
 const { InputSpec, Value, List, Variants } = sdk
 
-// ── Immich API shapes ───────────────────────────────────────────────────────
 type ImmichLibrary = {
   id: string
   ownerId: string
@@ -25,26 +23,26 @@ type ImmichUser = {
   name?: string
   isAdmin?: boolean
 }
+type ExposedSources =
+  { filebrowser: boolean; nextcloud: boolean } | null | undefined
 
-// Folder/path Lists live INSIDE the source variant (hierarchical). The List has
-// `minLength: null` so a freshly-switched variant starts with ZERO rows — there
-// is no auto-created row for StartOS to bleed a sibling row's value into; you
-// click Add to make a fresh empty row.
-type SourceValue =
-  | { selection: 'filebrowser'; value: { folders: string[] } }
-  | { selection: 'nextcloud'; value: { user: string; folders: string[] } }
-  | { selection: 'custom'; value: { paths: string[] } }
-
-type ExposedFlags =
-  { filebrowser?: boolean; nextcloud?: boolean } | null | undefined
-type LegacyLibs = ReadonlyArray<{ source: { selection: string } }>
-
-type LibraryRow = {
-  id?: string
-  owner: string
-  name: string
-  source: SourceValue
-}
+// The variant set is chosen at render time, so the form infers `source` as
+// `{ selection: string; value: any }`. Parsing narrows it back.
+const sourceValue = z.discriminatedUnion('selection', [
+  z.object({
+    selection: z.literal('filebrowser'),
+    value: z.object({ folders: z.array(z.string()) }),
+  }),
+  z.object({
+    selection: z.literal('nextcloud'),
+    value: z.object({ user: z.string(), folders: z.array(z.string()) }),
+  }),
+  z.object({
+    selection: z.literal('custom'),
+    value: z.object({ paths: z.array(z.string()) }),
+  }),
+])
+type SourceValue = z.infer<typeof sourceValue>
 
 function buildImportPaths(source: SourceValue): string[] {
   if (source.selection === 'filebrowser') {
@@ -59,22 +57,16 @@ function buildImportPaths(source: SourceValue): string[] {
   return source.value.paths.filter(Boolean)
 }
 
-// Map a library's import paths to a source variant. Friendly types require a
-// connected source AND that every path is a specific folder under it (a
-// whole-dir or odd path falls through to custom, preserved verbatim), so
-// nothing is dropped and a round-trip never loses a path.
+// Anything that isn't wholly a connected source's folders falls through to
+// custom, verbatim, so a round-trip never loses a path.
 function parseLibrary(
   importPaths: string[],
-  exposed: ExposedFlags,
-  legacyLibs: LegacyLibs,
+  exposed: ExposedSources,
 ): SourceValue {
   const fbPrefix = `${FILEBROWSER_MOUNTPOINT}/`
   const ncRoot = `${NEXTCLOUD_MOUNTPOINT}/data/`
 
-  if (
-    importPaths.length > 0 &&
-    sourceExposed('filebrowser', exposed, legacyLibs)
-  ) {
+  if (importPaths.length > 0 && exposed?.filebrowser) {
     if (
       importPaths.every(
         (p) => p.startsWith(fbPrefix) && p.length > fbPrefix.length,
@@ -89,10 +81,7 @@ function parseLibrary(
     }
   }
 
-  if (
-    importPaths.length > 0 &&
-    sourceExposed('nextcloud', exposed, legacyLibs)
-  ) {
+  if (importPaths.length > 0 && exposed?.nextcloud) {
     const parsed = importPaths.map((p) => {
       if (!p.startsWith(ncRoot)) return null
       const m = p.slice(ncRoot.length).match(/^([^/]+)\/files\/(.+)$/)
@@ -115,10 +104,8 @@ function parseLibrary(
   return { selection: 'custom', value: { paths: importPaths } }
 }
 
-// ── Form spec ────────────────────────────────────────────────────────────────
-// A fresh folder List per variant. `minLength: null` → a freshly-switched
-// variant starts with ZERO rows (no auto-created row to bleed into); you click
-// Add for a clean empty row.
+// `minLength: null` so a freshly-switched variant starts with zero rows —
+// an auto-created row inherits the value of the sibling row it replaced.
 function foldersBox() {
   return Value.list(
     List.text(
@@ -153,11 +140,10 @@ const filebrowserVariant = {
 const nextcloudVariant = {
   name: i18n('Nextcloud'),
   spec: InputSpec.of({
-    // Dropdown of Nextcloud users: the startup-cached list UNIONed with users
-    // any existing library references (keeps a library whose user isn't cached
-    // from disappearing).
+    // The startup-cached list, unioned with users any existing library
+    // references, so a library whose user is not cached does not lose it.
     user: Value.dynamicSelect(async ({ effects }) => {
-      const apiKey = await storeJson.read((s) => s.apiKey).once()
+      const apiKey = await getOrMintApiKey(effects)
       const cached =
         (await storeJson.read((s) => s.nextcloudUsers).once()) || []
       const users = new Set<string>(cached)
@@ -219,12 +205,10 @@ export const inputSpec = InputSpec.of({
       {
         displayAs: '{{name}}',
         spec: InputSpec.of({
-          // Immich library id. A newly added row sends null (→ create on save);
-          // populated by getInput for rows read back from Immich.
+          // Null on a newly added row, which is what makes it a create on save.
           id: Value.hidden(z.string().nullish()),
-          // Live dropdown of Immich users (value = user id → ownerId).
           owner: Value.dynamicSelect(async ({ effects }) => {
-            const apiKey = await storeJson.read((s) => s.apiKey).once()
+            const apiKey = await getOrMintApiKey(effects)
             const values: Record<string, string> = {}
             let adminId = ''
             if (apiKey) {
@@ -257,24 +241,22 @@ export const inputSpec = InputSpec.of({
             required: true,
             default: null,
           }),
-          // Source type + its folders (or, for Custom, full paths). Connected
-          // File Browser / Nextcloud are offered; Custom paths is the always-on
-          // catch-all so every library maps to something.
+          // Custom paths is always offered, so every library maps to a variant.
           source: Value.dynamicUnion(async ({ effects }) => {
-            const store = await storeJson.read().once()
-            const libs = store?.externalLibraries || []
-            const exposed = store?.exposedSources
-            const fbOn = sourceExposed('filebrowser', exposed, libs)
-            const ncOn = sourceExposed('nextcloud', exposed, libs)
+            const exposed = await storeJson.read((s) => s.exposedSources).once()
 
             const variants: Record<string, { name: string; spec: any }> = {}
-            if (fbOn) variants.filebrowser = filebrowserVariant
-            if (ncOn) variants.nextcloud = nextcloudVariant
+            if (exposed?.filebrowser) variants.filebrowser = filebrowserVariant
+            if (exposed?.nextcloud) variants.nextcloud = nextcloudVariant
             variants.custom = customVariant
 
             return {
               name: i18n('Source'),
-              default: fbOn ? 'filebrowser' : ncOn ? 'nextcloud' : 'custom',
+              default: exposed?.filebrowser
+                ? 'filebrowser'
+                : exposed?.nextcloud
+                  ? 'nextcloud'
+                  : 'custom',
               description: i18n(
                 'Where the photos are. Connect File Browser or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
               ),
@@ -306,28 +288,25 @@ export const externalLibraries = sdk.Action.withInput(
 
   inputSpec,
 
-  // Read the live library list from Immich. Every library maps to a variant,
-  // so none are dropped.
   async ({ effects }) => {
-    const store = await storeJson.read().once()
-    const exposed = store?.exposedSources
-    const legacyLibs = store?.externalLibraries || []
-
     const apiKey = await getOrMintApiKey(effects)
     if (!apiKey) return { knownIds: [], externalLibraries: [] }
 
+    const exposed = await storeJson.read((s) => s.exposedSources).once()
     const libs = await immichApi<ImmichLibrary[]>('/libraries', apiKey)
-    const out: LibraryRow[] = libs.map((lib) => ({
-      id: lib.id,
-      owner: lib.ownerId,
-      name: lib.name,
-      source: parseLibrary(lib.importPaths, exposed, legacyLibs),
-    }))
-    return { knownIds: libs.map((l) => l.id), externalLibraries: out }
+    return {
+      knownIds: libs.map((l) => l.id),
+      externalLibraries: libs.map((lib) => ({
+        id: lib.id,
+        owner: lib.ownerId,
+        name: lib.name,
+        source: parseLibrary(lib.importPaths, exposed),
+      })),
+    }
   },
 
-  // Apply the form back to Immich, correlating by id: create (no id), update
-  // in place (existing id), delete (any current library the user removed).
+  // Correlate by id: create (no id), update in place (existing id), delete
+  // (any rendered library the user removed).
   async ({ effects, input }) => {
     const submitted = input.externalLibraries || []
 
@@ -340,9 +319,9 @@ export const externalLibraries = sdk.Action.withInput(
 
     const submittedIds = new Set<string>()
     for (const row of submitted) {
-      const importPaths = buildImportPaths(row.source as unknown as SourceValue)
+      const importPaths = buildImportPaths(sourceValue.parse(row.source))
       if (row.id) {
-        // Update in place — owner is immutable, so it isn't sent.
+        // Immich fixes a library's owner at creation, so it isn't sent.
         submittedIds.add(row.id)
         await immichApi(`/libraries/${row.id}`, apiKey, {
           method: 'PUT',
@@ -364,14 +343,11 @@ export const externalLibraries = sdk.Action.withInput(
       }
     }
 
-    // Delete the libraries the user removed from the form, scoped to the ones
-    // the form actually rendered so anything created in Immich since it opened
-    // survives. A form with no `knownIds` at all predates that field; fall back
-    // to deleting everything unsubmitted rather than silently deleting nothing.
-    const rendered = input.knownIds ? new Set(input.knownIds) : null
+    // Scoped to what the form rendered, so a library created in Immich while it
+    // was open is not deleted by a save that never showed it.
+    const rendered = new Set(input.knownIds ?? [])
     for (const lib of current) {
-      if (submittedIds.has(lib.id)) continue
-      if (rendered && !rendered.has(lib.id)) continue
+      if (submittedIds.has(lib.id) || !rendered.has(lib.id)) continue
       await immichApi(`/libraries/${lib.id}`, apiKey, { method: 'DELETE' })
     }
 

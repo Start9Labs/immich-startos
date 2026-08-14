@@ -12,27 +12,6 @@ export const uiInterfaceId = 'ui'
 export const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser' as const
 export const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud' as const
 
-export type ExposableSource = 'filebrowser' | 'nextcloud'
-
-/**
- * Whether a source's volume should be mounted read-only into Immich.
- *
- * `exposedSources` is authoritative once the Connect Photo Sources action has
- * been saved — it always carries a flag for every source, so an absent one
- * means off. Installs predating that action have no `exposedSources` at all;
- * there we fall back to the legacy `store.externalLibraries` list, which was
- * the only thing driving the mount before, so their libraries keep working
- * across the upgrade until the first save supersedes it.
- */
-export function sourceExposed(
-  source: ExposableSource,
-  exposedSources: Partial<Record<ExposableSource, boolean>> | null | undefined,
-  libs: ReadonlyArray<{ source: { selection: string } }>,
-): boolean {
-  if (exposedSources) return !!exposedSources[source]
-  return libs.some((l) => l.source.selection === source)
-}
-
 export async function getNonLocalUrls(effects: T.Effects): Promise<string[]> {
   return sdk.host
     .getOwn(effects, uiHostId, (host) => {
@@ -423,7 +402,7 @@ export async function withTempApiKey<R>(
   }
 }
 
-/** Whether Immich still accepts this key — it can be revoked from Immich's UI. */
+/** A stored key can be revoked from Immich's own UI, so it is checked, not trusted. */
 async function apiKeyValid(key: string): Promise<boolean> {
   try {
     const res = await fetch(`${immichBase}/users/me`, {
@@ -436,13 +415,8 @@ async function apiKeyValid(key: string): Promise<boolean> {
 }
 
 /**
- * Returns a long-lived 'startos-managed' Immich API key, minting one if the
- * stored key is missing or no longer valid. Unlike {@link withTempApiKey} this
- * key persists (in store.json), so the action can call the Immich API with a
- * plain fetch — including from the owner dropdown built at form-render time,
- * which can't afford to spin a DB container.
- *
- * Returns undefined if no admin exists yet (nothing to own the key).
+ * Returns the long-lived 'startos-managed' Immich API key, minting one if the
+ * stored key is missing or rejected. Undefined until an admin exists to own it.
  */
 export async function ensureApiKey(
   effects: T.Effects,
@@ -470,15 +444,7 @@ export async function ensureApiKey(
   return token
 }
 
-/**
- * Action-side accessor for the persistent key: returns the stored key if Immich
- * still accepts it, otherwise spins a temporary postgres container once to mint
- * a fresh one. That covers both the narrow window after sign-up before the
- * ensure-api-key oneshot has run, and a key revoked from Immich's own UI, which
- * would otherwise fail every call until the next restart. The owner dropdown
- * does NOT use this — it only reads the stored key — so no container is ever
- * spun at form-render time.
- */
+/** As {@link ensureApiKey}, but spins its own postgres container when it has to mint. */
 export async function getOrMintApiKey(
   effects: T.Effects,
 ): Promise<string | undefined> {

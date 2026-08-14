@@ -1,7 +1,6 @@
 import { sdk } from '../sdk'
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
-import { sourceExposed } from '../utils'
 
 const { InputSpec, Value } = sdk
 
@@ -38,16 +37,11 @@ export const connectSources = sdk.Action.withInput(
 
   inputSpec,
 
-  // Reflect the effective state: a source reads as "on" when explicitly exposed
-  // OR when a configured library uses it, so existing installs (which carry no
-  // explicit flag) don't show their in-use sources as off.
   async ({ effects }) => {
-    const store = await storeJson.read().once()
-    const libs = store?.externalLibraries || []
-    const exposed = store?.exposedSources
+    const exposed = await storeJson.read((s) => s.exposedSources).once()
     return {
-      filebrowser: sourceExposed('filebrowser', exposed, libs),
-      nextcloud: sourceExposed('nextcloud', exposed, libs),
+      filebrowser: !!exposed?.filebrowser,
+      nextcloud: !!exposed?.nextcloud,
     }
   },
 

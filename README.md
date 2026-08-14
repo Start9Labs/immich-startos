@@ -77,7 +77,7 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 
 **StartOS-specific files:**
 
-- `store.json` — PostgreSQL password, primary URL, SMTP settings, external library configurations
+- `store.json` — PostgreSQL password, primary URL, SMTP settings, which photo sources are connected, and the `startos-managed` Immich API key. External libraries themselves live in Immich's own database, not here.
 
 ---
 
@@ -95,7 +95,7 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 2. Access the web UI — it comes up immediately after install completes.
 3. Register your account (first user becomes administrator)
 4. Install mobile apps and configure backup
-5. Optionally configure external libraries via action
+5. Optionally connect File Browser or Nextcloud via the Connect Photo Sources action, then add libraries against them
 
 ---
 
@@ -108,7 +108,7 @@ StartOS selects the variant **automatically** from the GPU it detects on the hos
 | SMTP               | Configure SMTP            | Email notifications                                                                              |
 | Primary URL        | Set Primary URL           | External domain used for public share links                                                      |
 | Data Sources       | Connect Photo Sources     | Mount File Browser / Nextcloud into Immich (read-only) so they can be used as external libraries |
-| External Libraries | Manage External Libraries | Live two-way editor over Immich's external libraries (create/edit/reassign/delete, with owner)   |
+| External Libraries | Manage External Libraries | Live two-way editor over Immich's external libraries (create/edit/delete, with owner)            |
 | Admin Password     | Reset Admin Password      | Generate new admin credentials                                                                   |
 
 ### Settings Forced by StartOS (not editable in Immich UI)
@@ -205,20 +205,20 @@ Toggle **File Browser** and/or **Nextcloud** on to mount that service's volume r
 - In **Manage External Libraries**, only connected sources appear as options; unconnected ones are not offered.
 - In the **Immich admin UI** (Administration → Libraries), **any Immich admin can create their own external library** against a connected source, choosing the owning user themselves. This is the way to give a non-admin user a library owned by them, or to set one up without the admin wanting one of their own.
 
-Backwards compatibility: a library that pre-dates this action keeps its source connected automatically (the source is treated as connected whenever a library already uses it), so existing installs need no action after upgrade.
+Backwards compatibility: upgrading to `3.1.0:1` runs a migration that turns on whichever sources the install's existing libraries already used, so those libraries keep working and there is nothing to do after the update.
 
 Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). Saving rebuilds the server's mounts on the restart that follows. Disconnecting a source in use does not delete its libraries — their paths simply stop resolving, and they fall back to **Custom paths** in Manage External Libraries.
 
 ### Manage External Libraries
 
-| Property     | Value                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------- |
-| ID           | `external-libraries`                                                                          |
-| Name         | Manage External Libraries                                                                     |
-| Group        | External Libraries                                                                            |
-| Visibility   | Enabled                                                                                       |
-| Availability | Only when running                                                                             |
-| Purpose      | Create, edit, reassign, and delete external libraries — a live view of Immich's own libraries |
+| Property     | Value                                                                               |
+| ------------ | ----------------------------------------------------------------------------------- |
+| ID           | `external-libraries`                                                                |
+| Name         | Manage External Libraries                                                           |
+| Group        | External Libraries                                                                  |
+| Visibility   | Enabled                                                                             |
+| Availability | Only when running                                                                   |
+| Purpose      | Create, edit, and delete external libraries — a live view of Immich's own libraries |
 
 This action is a **live, two-way editor over Immich's external libraries**, not a separate config store:
 

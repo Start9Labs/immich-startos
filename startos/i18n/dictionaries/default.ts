@@ -14,18 +14,15 @@ const dict = {
   'The Immich web interface for managing your photo library': 7,
 
   // actions/externalLibraries.ts
-  'Folder Path': 8,
   'The path to the folder containing your photos and videos.': 9,
   'Must be a valid file path': 10,
   'External Libraries': 11,
   Name: 12,
   'A unique name to identify this library (e.g. "Family Photos")': 13,
   Source: 14,
-  'The service where your photos and videos are stored': 15,
   Nextcloud: 16,
   'Nextcloud User': 17,
   'The Nextcloud user account that owns the files.': 18,
-  'May only contain alphanumeric characters, hyphens, and periods.': 19,
   'File Browser': 20,
   'Configure external photo libraries from Nextcloud or File Browser': 21,
   'Manage External Libraries': 25,

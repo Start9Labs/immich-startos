@@ -20,7 +20,7 @@ To run a command inside the service's container (read its generated config, grep
 
 **Use `stop` + `start`, not `restart`.** `start-cli package restart immich` has been observed to leave the outgoing containers alive: the old `immich-ml` keeps port 3003 bound, so the incoming one loops on `Connection in use: ('::', 3003) … Address already in use` and the stack never becomes ready. It also registers a second `immich-server` subcontainer, after which `attach -n immich-server` fails with "multiple subcontainers found" and _both_ offered Guids are dead (`open r …/proc/1/ns/pid: No such file or directory`). `start-cli package stop immich`, wait for it to settle, then `start-cli package start immich` comes up clean.
 
-**Talking to the Immich API is usually easier than attaching.** The web UI is published on a LAN port — read it from `store.json`'s `primaryUrl` (`sudo cat /media/startos/data/package-data/volumes/immich/data/startos/store.json`) — and answers over HTTPS with a self-signed cert, so `curl -k` from your workstation works without any subcontainer selector:
+**Talking to the Immich API is usually easier than attaching.** The web UI is published on a LAN port — read it with `sudo jq -r .primaryUrl /media/startos/data/package-data/volumes/immich/data/startos/store.json` (that file also holds the postgres password and the `startos-managed` API key, so pull the one field rather than dumping it) — and answers over HTTPS with a self-signed cert, so `curl -k` from your workstation works without any subcontainer selector:
 
 ```sh
 curl -sk "$PRIMARY_URL/api/server/ping"                       # readiness
@@ -33,4 +33,4 @@ TOKEN=$(curl -sk -X POST "$PRIMARY_URL/api/auth/login" \
 curl -sk "$PRIMARY_URL/api/libraries" -H "Authorization: Bearer $TOKEN"
 ```
 
-A fresh install has **no admin** until sign-up completes, and both `ensureApiKey` and the library actions no-op or fail until one exists — so sign up first when setting up a test box.
+A fresh install has **no admin** until sign-up completes, and there is nothing to own an API key until one exists — the `ensure-api-key` oneshot no-ops and the library actions fail. So sign up first when setting up a test box.

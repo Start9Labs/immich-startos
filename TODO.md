@@ -41,10 +41,10 @@ through the remaining rows and the deletion pass, then throw one error naming
 the libraries that failed. Deferred because it changes the action from
 all-or-nothing to partial application, which wants its own device test.
 
-## Legacy store cleanup (optional)
+## Drop `store.externalLibraries` from the schema (optional)
 
-`store.externalLibraries` is vestigial — nothing writes it, and it is read only
-as the pre-`exposedSources` fallback in `sourceExposed` (mount + variant
-gating), which an install stops consulting the moment it saves Connect Photo
-Sources. A one-time `up` migration could backfill `exposedSources` from it and
-drop the key entirely. Not required; purely tidiness.
+Nothing reads the key at runtime any more — 3.1.0:1's `up` migration backfills
+`exposedSources` from it, and that is now the only authority for what gets
+mounted. The zod entry has to stay as long as that migration can run, which is
+for as long as anyone can upgrade from below 3.1.0:1. Removing it later would
+strip the key from disk on the next write, since `z.object` drops unknown keys.
