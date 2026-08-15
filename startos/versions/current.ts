@@ -1,9 +1,18 @@
 import { VersionInfo, IMPOSSIBLE } from '@start9labs/start-sdk'
+import { storeJson } from '../fileModels/store.json'
 
 export const current = VersionInfo.of({
-  version: '3.1.0:0',
+  version: '3.1.0:1',
   releaseNotes: {
-    en_US: `Updated Immich to 3.1.0.
+    en_US: `Updated Immich to 3.1.0 and reworked external photo libraries.
+
+**External libraries**
+
+- New **Connect Photo Sources** action grants Immich read-only access to File Browser or Nextcloud, separately from configuring a library.
+- **Manage External Libraries** is now a live, two-way editor of Immich's own libraries: assign each to any Immich user, index multiple folders, and rename or remove them without duplicates or orphans.
+- Libraries created in Immich's own admin UI appear here too. Existing libraries keep working — nothing to do after the update.
+
+**Immich 3.1.0**
 
 - Workflows can now filter assets by their file path on the server and by EXIF metadata.
 - The web uploader holds a wakelock so the screen no longer dims mid-upload, and archiving assets can be undone from the confirmation toast.
@@ -12,8 +21,16 @@ export const current = VersionInfo.of({
 - Many fixes, including zero-byte image uploads, locked-folder permissions, and video playback under the default content security policy.
 - Note: the Immich mobile app has dropped support for iOS 14.
 
-Full release notes: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
-    es_ES: `Actualiza Immich a 3.1.0.
+[Full upstream release notes](https://github.com/immich-app/immich/releases/tag/v3.1.0)`,
+    es_ES: `Actualiza Immich a 3.1.0 y rediseña las bibliotecas de fotos externas.
+
+**Bibliotecas externas**
+
+- La nueva acción **Conectar fuentes de fotos** concede a Immich acceso de solo lectura a Explorador de archivos o Nextcloud, con independencia de la configuración de bibliotecas.
+- **Gestionar bibliotecas externas** es ahora un editor bidireccional en vivo de las bibliotecas de Immich: asigne cada una a cualquier usuario de Immich, indexe varias carpetas y renómbrelas o elimínelas sin duplicados ni huérfanos.
+- Las bibliotecas creadas en la propia interfaz de administración de Immich también aparecen aquí. Las bibliotecas existentes siguen funcionando: no hay que hacer nada tras la actualización.
+
+**Immich 3.1.0**
 
 - Los flujos de trabajo ya pueden filtrar archivos por su ruta en el servidor y por metadatos EXIF.
 - La subida desde el navegador mantiene la pantalla encendida durante el proceso, y ahora se puede deshacer el archivado desde la notificación de confirmación.
@@ -22,8 +39,16 @@ Full release notes: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
 - Numerosas correcciones, entre ellas las subidas de imágenes de cero bytes, los permisos de carpetas bloqueadas y la reproducción de vídeo con la política de seguridad de contenido predeterminada.
 - Nota: la aplicación móvil de Immich ha dejado de admitir iOS 14.
 
-Notas de la versión completas: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
-    de_DE: `Aktualisiert Immich auf 3.1.0.
+[Notas de la versión completas](https://github.com/immich-app/immich/releases/tag/v3.1.0)`,
+    de_DE: `Aktualisiert Immich auf 3.1.0 und überarbeitet externe Fotobibliotheken.
+
+**Externe Bibliotheken**
+
+- Die neue Aktion **Fotoquellen verbinden** gewährt Immich schreibgeschützten Zugriff auf Dateibrowser oder Nextcloud – unabhängig von der Bibliothekskonfiguration.
+- **Externe Bibliotheken verwalten** ist jetzt ein bidirektionaler Live-Editor der Immich-Bibliotheken: Weisen Sie jede einem beliebigen Immich-Benutzer zu, indizieren Sie mehrere Ordner und benennen oder entfernen Sie sie ohne Duplikate oder Waisen.
+- In Immichs eigener Administrationsoberfläche erstellte Bibliotheken erscheinen ebenfalls hier. Bestehende Bibliotheken funktionieren weiter – nach dem Update ist nichts zu tun.
+
+**Immich 3.1.0**
 
 - Workflows können Dateien jetzt nach ihrem Pfad auf dem Server und nach EXIF-Metadaten filtern.
 - Der Web-Upload hält den Bildschirm während des Vorgangs wach, und das Archivieren lässt sich direkt über die Bestätigungsmeldung rückgängig machen.
@@ -32,8 +57,16 @@ Notas de la versión completas: https://github.com/immich-app/immich/releases/ta
 - Zahlreiche Fehlerbehebungen, unter anderem bei Uploads von Bildern mit null Byte, bei Berechtigungen für gesperrte Ordner und bei der Videowiedergabe unter der standardmäßigen Content Security Policy.
 - Hinweis: Die mobile Immich-App unterstützt iOS 14 nicht mehr.
 
-Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
-    pl_PL: `Aktualizuje Immich do 3.1.0.
+[Vollständige Versionshinweise](https://github.com/immich-app/immich/releases/tag/v3.1.0)`,
+    pl_PL: `Aktualizuje Immich do 3.1.0 i przebudowuje zewnętrzne biblioteki zdjęć.
+
+**Biblioteki zewnętrzne**
+
+- Nowa akcja **Połącz źródła zdjęć** daje Immich dostęp tylko do odczytu do Przeglądarki plików lub Nextcloud, niezależnie od konfiguracji bibliotek.
+- **Zarządzaj bibliotekami zewnętrznymi** to teraz dwukierunkowy edytor bibliotek Immich na żywo: przypisz każdą do dowolnego użytkownika Immich, indeksuj wiele folderów oraz zmieniaj nazwy lub usuwaj je bez duplikatów i sierot.
+- Biblioteki utworzone w panelu administracyjnym Immich również się tu pojawiają. Istniejące biblioteki działają dalej — po aktualizacji nie trzeba nic robić.
+
+**Immich 3.1.0**
 
 - Przepływy pracy mogą teraz filtrować pliki według ścieżki na serwerze oraz według metadanych EXIF.
 - Przesyłanie przez przeglądarkę utrzymuje ekran włączony, a archiwizację można cofnąć z poziomu powiadomienia o powodzeniu.
@@ -42,8 +75,16 @@ Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/ta
 - Wiele poprawek, w tym przesyłanie obrazów o zerowym rozmiarze, uprawnienia zablokowanych folderów oraz odtwarzanie wideo przy domyślnej polityce bezpieczeństwa treści.
 - Uwaga: aplikacja mobilna Immich nie obsługuje już systemu iOS 14.
 
-Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.1.0`,
-    fr_FR: `Met à jour Immich vers 3.1.0.
+[Pełne informacje o wydaniu](https://github.com/immich-app/immich/releases/tag/v3.1.0)`,
+    fr_FR: `Met à jour Immich vers 3.1.0 et refond les bibliothèques de photos externes.
+
+**Bibliothèques externes**
+
+- La nouvelle action **Connecter des sources de photos** donne à Immich un accès en lecture seule au Navigateur de fichiers ou à Nextcloud, indépendamment de la configuration des bibliothèques.
+- **Gérer les bibliothèques externes** est désormais un éditeur bidirectionnel en direct des bibliothèques d'Immich : attribuez chacune à n'importe quel utilisateur Immich, indexez plusieurs dossiers, et renommez ou supprimez-les sans doublons ni orphelins.
+- Les bibliothèques créées dans l'interface d'administration d'Immich apparaissent aussi ici. Les bibliothèques existantes continuent de fonctionner : rien à faire après la mise à jour.
+
+**Immich 3.1.0**
 
 - Les flux de travail peuvent désormais filtrer les fichiers selon leur chemin sur le serveur et selon les métadonnées EXIF.
 - L'envoi depuis le navigateur maintient l'écran allumé pendant l'opération, et l'archivage peut être annulé depuis la notification de confirmation.
@@ -52,10 +93,21 @@ Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v
 - De nombreuses corrections, notamment sur les envois d'images de zéro octet, les permissions des dossiers verrouillés et la lecture vidéo avec la politique de sécurité du contenu par défaut.
 - Remarque : l'application mobile Immich ne prend plus en charge iOS 14.
 
-Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.1.0`,
+[Notes de version complètes](https://github.com/immich-app/immich/releases/tag/v3.1.0)`,
   },
   migrations: {
-    up: async ({ effects }) => {},
+    // Seeds `exposedSources` from the libraries an install already had, making it
+    // the sole authority for which dependency volumes get mounted.
+    up: async ({ effects }) => {
+      const libs = await storeJson.read((s) => s.externalLibraries).once()
+      if (!libs?.length) return
+      await storeJson.merge(effects, {
+        exposedSources: {
+          filebrowser: libs.some((l) => l.source.selection === 'filebrowser'),
+          nextcloud: libs.some((l) => l.source.selection === 'nextcloud'),
+        },
+      })
+    },
     down: IMPOSSIBLE,
   },
 })

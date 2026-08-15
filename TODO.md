@@ -20,3 +20,31 @@ stays at `14-vectorchord0.4.3-pgvectors0.2.0`. Deliberately. Blockers:
 Revisit when Immich's own `docker-compose.yml` moves to a vchord 1.x image. At that point verify
 whether a Postgres restart is needed between the `ALTER EXTENSION` and the reindex (see the warning
 in `server/src/services/database.service.ts`) — our daemon chain does not restart Postgres mid-boot.
+
+## One bad row fails the whole Manage External Libraries save
+
+`externalLibraries`'s apply loop `PUT`s every submitted row, and Immich validates
+import paths on update — so a single library whose path has gone missing (the
+common cause: its source was disconnected via Connect Photo Sources) makes
+_every_ save of that form fail with `400 Invalid import path`, before any other
+row's edit or any deletion is applied. Reproduced on StartOS 0.4.0.1: disconnect
+File Browser while a library still points at `/mnt/filebrowser/...`, then try to
+save the form.
+
+The user is not stuck — removing the stale row works, because removed rows are
+deleted rather than `PUT` — but keeping it while editing anything else is
+impossible, and the error names an Immich path rather than saying which library
+is at fault.
+
+Worth fixing by applying rows independently: catch per-row failures, continue
+through the remaining rows and the deletion pass, then throw one error naming
+the libraries that failed. Deferred because it changes the action from
+all-or-nothing to partial application, which wants its own device test.
+
+## Drop `store.externalLibraries` from the schema (optional)
+
+Nothing reads the key at runtime any more — 3.1.0:1's `up` migration backfills
+`exposedSources` from it, and that is now the only authority for what gets
+mounted. The zod entry has to stay as long as that migration can run, which is
+for as long as anyone can upgrade from below 3.1.0:1. Removing it later would
+strip the key from disk on the next write, since `z.object` drops unknown keys.

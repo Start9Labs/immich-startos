@@ -28,7 +28,7 @@ export const setPrimaryUrl = sdk.Action.withInput(
   async ({ effects }) => ({
     name: i18n('Set Primary URL'),
     description: i18n(
-      'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Changes apply on next restart.',
+      'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Immich restarts automatically to apply the change.',
     ),
     warning: null,
     allowedStatuses: 'any',

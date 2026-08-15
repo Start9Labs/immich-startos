@@ -7,23 +7,31 @@ import {
   buildCoreDaemons,
   createCoreSubs,
   enforceSystemConfigDefaults,
+  ensureApiKey,
+  FILEBROWSER_MOUNTPOINT,
   getPostgresEnv,
   immichApi,
+  NEXTCLOUD_MOUNTPOINT,
   withAdminApiKey,
 } from './utils'
-
-const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser'
-const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud'
 
 export const main = sdk.setupMain(async ({ effects }) => {
   console.info(i18n('Starting Immich'))
 
   const postgresEnv = await getPostgresEnv(effects)
 
-  const store = await storeJson.read().const(effects)
+  // Projected, not whole-store: the oneshots below write `apiKey` and
+  // `nextcloudUsers`, and a const spanning those restarts the stack on each.
+  const store = await storeJson
+    .read((s) => ({
+      exposedSources: s.exposedSources,
+      primaryUrl: s.primaryUrl,
+      smtp: s.smtp,
+    }))
+    .const(effects)
   if (!store) throw new Error('store.json not found')
 
-  const libs = store.externalLibraries || []
+  const exposed = store.exposedSources
   const primaryUrl = store.primaryUrl
   const smtpStore = store.smtp
 
@@ -58,7 +66,6 @@ export const main = sdk.setupMain(async ({ effects }) => {
     }
   }
 
-  // Build server mounts: always mount upload volume, conditionally mount external libraries
   let serverMounts = sdk.Mounts.of().mountVolume({
     volumeId: 'upload',
     mountpoint: '/usr/src/app/upload',
@@ -66,7 +73,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
     subpath: null,
   })
 
-  if (libs.some((l) => l.source.selection === 'filebrowser')) {
+  if (exposed?.filebrowser) {
     serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
       dependencyId: 'filebrowser',
       volumeId: 'data',
@@ -75,7 +82,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
       readonly: true,
     })
   }
-  if (libs.some((l) => l.source.selection === 'nextcloud')) {
+  if (exposed?.nextcloud) {
     serverMounts = serverMounts.mountDependency<typeof nextcloudManifest>({
       dependencyId: 'nextcloud',
       volumeId: 'nextcloud',
@@ -94,18 +101,8 @@ export const main = sdk.setupMain(async ({ effects }) => {
       success: i18n('The web interface is ready'),
       failure: i18n('The web interface is not ready'),
     })
-      // Enforce StartOS-authoritative defaults via direct write to
-      // system_metadata[system-config] — this bypasses Immich's API (which
-      // requires an admin API key) so it works on a fresh install before the
-      // user has completed sign-up.
-      //
-      //   newVersionCheck.enabled = false
-      //     StartOS owns updates, so the "new version available" modal is noise.
-      //   backup.database.enabled = false
-      //     StartOS backs up the DB via pg_dump. Immich's scheduled internal
-      //     dump is duplicate work that slowly fills the upload volume.
-      //
-      // See CLAUDE.md for the version-bump checklist.
+      // Writes system_metadata[system-config] directly rather than through
+      // Immich's API, which is admin-key-gated and so unusable before sign-up.
       .addOneshot('enforce-defaults', {
         subcontainer: postgresSub,
         exec: {
@@ -116,69 +113,45 @@ export const main = sdk.setupMain(async ({ effects }) => {
         },
         requires: ['postgres'],
       })
-      .addOneshot('configure-libraries', {
+      .addOneshot('ensure-api-key', {
         subcontainer: serverSub,
         exec: {
           fn: async () => {
-            if (!libs.length) return null
-
-            // Compute import paths for each configured library
-            const libraryConfigs = libs.map((lib) => {
-              const importPath =
-                lib.source.selection === 'filebrowser'
-                  ? `${FILEBROWSER_MOUNTPOINT}/${lib.source.value.path}`
-                  : `${NEXTCLOUD_MOUNTPOINT}/data/${lib.source.value.user}/files/${lib.source.value.path}`
-              return { name: lib.name, importPaths: [importPath] }
-            })
-
-            await withAdminApiKey(
-              postgresSub,
-              'startos-libs',
-              async ({ token, adminId }) => {
-                type Library = { id: string; name: string }
-                const existing = await immichApi<Library[]>('/libraries', token)
-
-                for (const cfg of libraryConfigs) {
-                  let lib = existing.find((e) => e.name === cfg.name)
-                  if (!lib) {
-                    lib = await immichApi<Library>('/libraries', token, {
-                      method: 'POST',
-                      body: {
-                        ownerId: adminId,
-                        name: cfg.name,
-                        importPaths: cfg.importPaths,
-                      },
-                    })
-                  } else {
-                    await immichApi(`/libraries/${lib.id}`, token, {
-                      method: 'PUT',
-                      body: { importPaths: cfg.importPaths },
-                    })
-                  }
-                  await immichApi(`/libraries/${lib.id}/scan`, token, {
-                    method: 'POST',
-                  })
-                }
-              },
-            )
-
+            await ensureApiKey(effects, postgresSub)
             return null
           },
         },
         requires: ['immich-server'],
       })
-      // Apply user-configurable settings that depend on the Immich API:
-      //
-      //   server.externalDomain = <primaryUrl>
-      //     Immich embeds this in public share links. User picks which URL via
-      //     the Set Primary URL action.
-      //   notifications.smtp = <credentials>
-      //     Only applied when the SMTP action is configured (system/custom).
-      //     When "disabled", SMTP is left untouched — we don't forcibly clear
-      //     whatever the user had previously.
-      //
-      // Enforced defaults (newVersionCheck, backup.database) live in the
-      // enforce-defaults oneshot above — direct DB write, no admin needed.
+      // The action context can't see the mount, so the usernames are cached here
+      // for its dropdown. Ordered after ensure-api-key: concurrent merges into
+      // store.json can drop each other's key.
+      .addOneshot('cache-nextcloud-users', {
+        subcontainer: serverSub,
+        exec: {
+          fn: async () => {
+            if (!exposed?.nextcloud) {
+              await storeJson.merge(effects, { nextcloudUsers: [] })
+              return null
+            }
+            const res = await serverSub.exec([
+              'sh',
+              '-c',
+              'for d in /mnt/nextcloud/data/*/files; do [ -d "$d" ] && basename "$(dirname "$d")"; done',
+            ])
+            const users = res.stdout
+              .toString()
+              .split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean)
+            await storeJson.merge(effects, { nextcloudUsers: users })
+            return null
+          },
+        },
+        requires: ['immich-server', 'ensure-api-key'],
+      })
+      // A "disabled" SMTP selection deliberately leaves Immich's existing
+      // credentials in place rather than clearing them.
       .addOneshot('apply-system-config', {
         subcontainer: serverSub,
         exec: {
