@@ -6,29 +6,26 @@ Develop it inside a StartOS packaging workspace created by `start-cli s9pk init-
 which provides the packaging guide and agent context one level up. If you're reading this in a
 bare clone with no workspace, the full guide is at <https://docs.start9.com/packaging>.
 
-Work this package's `TODO.md` from top to bottom. Keep `README.md` (architecture, for developers and LLMs) and `instructions.md` (end-user docs) in sync with your changes.
+Work this package's `TODO.md` from top to bottom. Keep `README.md` (technical reference for an AI support or administering agent) and `instructions.md` (end-user docs) in sync with your changes.
 
 ## This repo
 
-- **Package id is `immich`.** A multi-container stack — `createCoreSubs` in `startos/utils.ts` builds four subcontainers (`postgres`, `valkey`, `immich-ml`, `immich-server`) shared by install (`initializeImmich`) and runtime (`main`). Consumes File Browser and Nextcloud as optional dependencies (external photo-library sources).
-- **Variant package.** Builds `generic`/`cuda`/`rocm`/`openvino` flavors selected by the `VARIANT` env var. The pre-`include` `Makefile` overrides (`TARGETS`, `ARCHES`, and the `<variant>-<arch>` leaf rules) drive the release matrix and must stay ahead of the `include` line. Only the machine-learning image differs between variants.
-- **StartOS-enforced Immich settings are written straight to the DB.** `enforceSystemConfigDefaults` (`startos/utils.ts`) upserts `system_metadata[system-config]` via `psql`, bypassing Immich's admin-key-gated API so it applies before the user completes sign-up (`newVersionCheck.enabled=false`, `backup.database.enabled=false`). This depends on Immich's DB schema staying stable — re-verify the `system_metadata` shape on every upstream version bump.
+- **`cache-nextcloud-users` must stay ordered after `ensure-api-key`.** Both merge into `store.json`, and concurrent merges drop each other's keys.
+- **Only the machine-learning image varies by variant.** The server image is identical across all four — what changes is `nvidiaContainer` on it and the hardware requirement gating the install. The AMD match must stay a positive allowlist of discrete families: StartOS's regex engine has no lookahead, so an iGPU exclusion cannot be expressed, and plain `Radeon` would put `rocm` on Ryzen APU graphics.
+- **The `Makefile`'s `TARGETS`/`ARCHES` overrides and `<variant>-<arch>` leaf rules must stay above the `include` line**, or the release matrix builds nothing.
+- **A "disabled" SMTP selection deliberately leaves Immich's credentials in place.** It stops the package managing the setting; it does not turn email off inside Immich.
+- **Talking to the Immich API is usually easier than attaching to a subcontainer.**
+  Read the published address with `sudo jq -r .primaryUrl /media/startos/data/package-data/volumes/immich/data/startos/store.json` — pull the one field rather than dumping the file, which also holds the postgres password and the `startos-managed` API key. It answers over HTTPS with a self-signed cert, so `curl -k` from your workstation works:
 
-## Inspecting a running install
+  ```sh
+  curl -sk "$PRIMARY_URL/api/server/ping"                       # readiness
+  curl -sk -X POST "$PRIMARY_URL/api/auth/admin-sign-up" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"…","password":"…","name":"…"}'                # first admin only
+  TOKEN=$(curl -sk -X POST "$PRIMARY_URL/api/auth/login" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"…","password":"…"}' | jq -r .accessToken)
+  curl -sk "$PRIMARY_URL/api/libraries" -H "Authorization: Bearer $TOKEN"
+  ```
 
-To run a command inside the service's container (read its generated config, grep app logs), use `start-cli package attach immich -n immich-server -- <cmd>`. This package has several subcontainers (`postgres`, `valkey`, `immich-ml`, `immich-server`), so a selector is **required** — select by **name** with `-n` (the name passed to `SubContainer.of` in `startos/utils.ts`, e.g. `-n immich-server`) or by image with `-i`. Note: `-s/--subcontainer` matches the internal **Guid**, not the name, so passing a name to `-s` fails with "no matching subcontainers".
-
-**Talking to the Immich API is usually easier than attaching.** The web UI is published on a LAN port — read it with `sudo jq -r .primaryUrl /media/startos/data/package-data/volumes/immich/data/startos/store.json` (that file also holds the postgres password and the `startos-managed` API key, so pull the one field rather than dumping it) — and answers over HTTPS with a self-signed cert, so `curl -k` from your workstation works without any subcontainer selector:
-
-```sh
-curl -sk "$PRIMARY_URL/api/server/ping"                       # readiness
-curl -sk -X POST "$PRIMARY_URL/api/auth/admin-sign-up" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"…","password":"…","name":"…"}'                # first admin only
-TOKEN=$(curl -sk -X POST "$PRIMARY_URL/api/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"…","password":"…"}' | jq -r .accessToken)
-curl -sk "$PRIMARY_URL/api/libraries" -H "Authorization: Bearer $TOKEN"
-```
-
-A fresh install has **no admin** until sign-up completes, and there is nothing to own an API key until one exists — the `ensure-api-key` oneshot no-ops and the library actions fail. So sign up first when setting up a test box.
+  A fresh install has **no admin** until sign-up completes, and nothing to own an API key until one exists — `ensure-api-key` no-ops and the library actions fail. Sign up first when setting up a test box.

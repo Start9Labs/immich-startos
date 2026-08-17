@@ -39,5 +39,8 @@ export const initializeImmich = sdk.setupOnInit(async (effects, kind) => {
       },
       requires: ['immich-server'],
     })
+    // Install-only: running the chain to completion here is what creates
+    // system_metadata before the first user-facing main, so the enforced
+    // defaults land on the first boot rather than the second.
     .runUntilSuccess(600_000)
 })

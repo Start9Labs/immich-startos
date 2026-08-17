@@ -4,13 +4,15 @@
 
 # Immich on StartOS
 
-> **Upstream docs:** <https://docs.immich.app/overview/quick-start/>
->
 > Everything not listed in this document should behave the same as upstream
-> Immich. If a feature, setting, or behavior is not mentioned
-> here, the upstream documentation is accurate and fully applicable.
+> Immich. If a feature, setting, or behavior is not mentioned here, the
+> upstream documentation is accurate and fully applicable — see the
+> Documentation section of `instructions.md` for links.
 
-[Immich](https://github.com/immich-app/immich) is a self-hosted photo and video backup solution with automatic mobile device backup, machine learning-powered search, face recognition, and a modern web interface.
+[Immich](https://github.com/immich-app/immich) is a self-hosted photo and video library with machine-learning search, face recognition, and mobile apps. This package runs the whole four-container stack, ships one build per accelerator, and can read another StartOS service's files as an external library without copying them.
+
+- **Upstream repo:** <https://github.com/immich-app/immich>
+- **Wrapper repo:** <https://github.com/Start9Labs/immich-startos>
 
 ---
 
@@ -18,339 +20,217 @@
 
 - [Image and Container Runtime](#image-and-container-runtime)
 - [Volume and Data Layout](#volume-and-data-layout)
-- [Installation and First-Run Flow](#installation-and-first-run-flow)
-- [Configuration Management](#configuration-management)
-- [Network Access and Interfaces](#network-access-and-interfaces)
-- [Actions (StartOS UI)](#actions-startos-ui)
+- [File Models](#file-models)
 - [Dependencies](#dependencies)
-- [Backups and Restore](#backups-and-restore)
+- [Network Access and Interfaces](#network-access-and-interfaces)
+- [Installation and First-Run Flow](#installation-and-first-run-flow)
+- [Actions](#actions)
+- [Tasks](#tasks)
 - [Health Checks](#health-checks)
+- [Backups and Restore](#backups-and-restore)
 - [Limitations and Differences](#limitations-and-differences)
-- [What Is Unchanged from Upstream](#what-is-unchanged-from-upstream)
-- [Contributing](#contributing)
 - [Quick Reference for AI Consumers](#quick-reference-for-ai-consumers)
 
 ---
 
 ## Image and Container Runtime
 
-| Property      | Value                                               |
-| ------------- | --------------------------------------------------- |
-| Immich Server | `ghcr.io/immich-app/immich-server`                  |
-| Immich ML     | `ghcr.io/immich-app/immich-machine-learning`        |
-| PostgreSQL    | `ghcr.io/immich-app/postgres`                       |
-| Valkey        | `valkey/valkey`                                     |
-| Architectures | x86_64, aarch64 (GPU variants are x86_64 only)      |
-| Runtime       | Four containers (Server + ML + PostgreSQL + Valkey) |
+Four upstream images, unmodified — and **StartOS picks the accelerator build for you**, the most hardware-specific variant compatible with the machine.
 
-All images are upstream unmodified. PostgreSQL uses Immich's custom image with vector extensions for similarity search.
+| Variant    | Machine-learning image | Architectures   | Declared for                              |
+| ---------- | ---------------------- | --------------- | ----------------------------------------- |
+| `generic`  | CPU build              | x86_64, aarch64 | Everything else — the sole fallback       |
+| `cuda`     | CUDA build             | x86_64          | Any NVIDIA GPU                            |
+| `rocm`     | ROCm build             | x86_64          | A discrete AMD GPU on the `amdgpu` driver |
+| `openvino` | OpenVINO build         | x86_64          | An Intel GPU on the `i915` driver         |
 
-### Hardware Acceleration Variants
+**Only the machine-learning image differs between variants.** The server image is the same in all four; what changes with the variant is whether `nvidiaContainer` is declared on it and which hardware requirement gates the install. The other two images — PostgreSQL and Valkey — never vary.
 
-StartOS selects the variant **automatically** from the GPU it detects on the host (via each variant's manifest `hardwareRequirements`); there is no manual picker. Only the machine-learning image differs between variants; server, postgres, and valkey are identical.
+| Subcontainer    | Purpose                                                  |
+| --------------- | -------------------------------------------------------- |
+| `immich-server` | The application and API — the one to `attach` to         |
+| `immich-ml`     | Machine learning: search embeddings and face recognition |
+| `postgres`      | Immich's database, on a vector-extension build           |
+| `valkey`        | The job queue and cache                                  |
 
-| Variant    | ML Image Tag Suffix | Auto-selected for                                           | Arches          | NVIDIA runtime |
-| ---------- | ------------------- | ----------------------------------------------------------- | --------------- | -------------- |
-| `generic`  | _(none)_ — CPU      | Any host with no matching GPU (default)                     | x86_64, aarch64 | No             |
-| `cuda`     | `-cuda`             | NVIDIA GPU (`nvidia` driver)                                | x86_64          | Yes            |
-| `rocm`     | `-rocm`             | Discrete AMD GPU (`amdgpu` driver, Navi/Radeon RX/Instinct) | x86_64          | No             |
-| `openvino` | `-openvino`         | Intel GPU (`i915` driver)                                   | x86_64          | No             |
+The server and ML containers both run with `runAsInit`, since each image supervises its own processes. The server waits on all three of the others; nothing else is ordered.
 
-**AMD GPUs — discrete only:** the `rocm` variant is offered only to _discrete_ AMD GPUs. ROCm's MIGraphX backend crashes during model compilation on integrated Radeon graphics (e.g. the Radeon 680M in Ryzen APUs), so those hosts get the CPU-only `generic` variant instead. Selection matches the GPU product name in `rocm`'s `hardwareRequirements`, so a discrete card StartOS doesn't recognize also falls back to `generic` — sideload the `-rocm` s9pk manually if you need GPU ML on such a card.
-
-**NVIDIA GPUs — `-nvidia` flavor only:** the `cuda` variant (and NVENC transcoding) require StartOS to be installed from a `-nvidia` platform flavor (`x86_64-nvidia` / `aarch64-nvidia`), which bundles the NVIDIA driver and container toolkit. On the standard or `-nonfree` flavors the NVIDIA driver is absent, so an NVIDIA card isn't detected — its `nvidia` driver never appears, so the `cuda` variant isn't auto-selected and machine learning falls back to the CPU (`generic`) variant, even with an NVIDIA card physically present.
-
-**Hardware video transcoding** (NVENC, VAAPI, QSV) is available on any variant whose host has the matching GPU. After install, enable it in **Immich → Administration → Settings → Video Transcoding** and pick the acceleration API. Note: NVENC specifically requires the `cuda` variant (which enables the NVIDIA container runtime, and therefore the `-nvidia` flavor above); VAAPI and QSV work on any variant via StartOS `/dev/dri` passthrough.
-
-**Machine-learning CPU requirement:** the machine-learning container requires an `x86-64-v2` CPU (or any `aarch64` host). On older x86 hardware that predates `x86-64-v2`, the machine-learning container fails to start while the server, database, and cache keep running — smart search and facial recognition are lost, but core photo management is not.
-
----
+**Integrated AMD GPUs are excluded on purpose.** The `rocm` requirement matches discrete families by product name — Navi, Radeon RX, Radeon VII, Instinct — because ROCm is unreliable on integrated Radeon; those machines fall back to `generic` and run inference on CPU. The match is a positive allowlist rather than an iGPU exclusion because StartOS's regex engine has no lookahead.
 
 ## Volume and Data Layout
 
-| Volume        | Mount Point                | Purpose                              |
-| ------------- | -------------------------- | ------------------------------------ |
-| `upload`      | `/usr/src/app/upload`      | Photo and video storage              |
-| `db`          | `/var/lib/postgresql/data` | PostgreSQL database                  |
-| `model-cache` | `/cache`                   | Machine learning model cache         |
-| `startos`     | —                          | StartOS-managed state (`store.json`) |
+Four volumes, and the split matters for what a backup costs.
 
-**StartOS-specific files:**
+| Volume        | Mount Point                      | Purpose                                                  |
+| ------------- | -------------------------------- | -------------------------------------------------------- |
+| `upload`      | `/usr/src/app/upload` (server)   | Every photo and video you have uploaded, plus thumbnails |
+| `db`          | `/var/lib/postgresql` (postgres) | The database — albums, faces, metadata, search index     |
+| `model-cache` | `/cache` (immich-ml)             | Downloaded ML models                                     |
+| `startos`     | — (host side)                    | `store.json`; never mounted into a container             |
 
-- `store.json` — PostgreSQL password, primary URL, SMTP settings, which photo sources are connected, and the `startos-managed` Immich API key. External libraries themselves live in Immich's own database, not here.
+An external library's source volume is additionally mounted into the **server** container, **read-only** — File Browser's at `/mnt/filebrowser`, Nextcloud's at `/mnt/nextcloud`. Immich indexes those files in place; it never copies them onto the `upload` volume, and it cannot modify them.
 
----
+## File Models
 
-## Installation and First-Run Flow
+One model, and **Immich's own configuration is not a file** — it lives in the database, which is where this package writes it.
 
-| Step               | Upstream                                    | StartOS                                |
-| ------------------ | ------------------------------------------- | -------------------------------------- |
-| Installation       | Docker Compose setup                        | Install from marketplace               |
-| First user         | Register via web UI (becomes admin)         | Same as upstream                       |
-| External libraries | Configure via Settings > External Libraries | Use "Manage External Libraries" action |
+| File         | Volume    | Format | Modelled                | Written by                                   |
+| ------------ | --------- | ------ | ----------------------- | -------------------------------------------- |
+| `store.json` | `startos` | JSON   | Yes — `FileHelper.json` | Install, every init, `main`, and the actions |
 
-**First-run steps:**
+| Key                | Purpose                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| `postgresPassword` | Generated at install; also the credential the backup's dump authenticates with |
+| `primaryUrl`       | The address Immich advertises as its external domain                           |
+| `smtp`             | System SMTP, your own server, or disabled                                      |
+| `exposedSources`   | **The sole authority** for which dependency volumes get mounted                |
+| `apiKey`           | A package-owned Immich API key, in plaintext — Immich stores only its hash     |
+| `nextcloudUsers`   | Cached usernames, because the action context cannot see the mount              |
 
-1. Install Immich from StartOS marketplace. Install takes a few extra minutes because Immich's database schema is created during install rather than on first boot.
-2. Access the web UI — it comes up immediately after install completes.
-3. Register your account (first user becomes administrator)
-4. Install mobile apps and configure backup
-5. Optionally connect File Browser or Nextcloud via the Connect Photo Sources action, then add libraries against them
+`externalLibraries` is a superseded key, read only by the `3.1.0:1` migration that moved authority to `exposedSources`.
 
----
+### Settings written straight to the database
 
-## Configuration Management
+Immich reads its configuration once at bootstrap, out of `system_metadata`. Two settings are held off by writing that row **directly in PostgreSQL** rather than through Immich's API:
 
-### Settings Managed via StartOS Actions
+| Setting           | Held | Why                                                                                                    |
+| ----------------- | ---- | ------------------------------------------------------------------------------------------------------ |
+| `newVersionCheck` | off  | Updates arrive as StartOS package versions, not from upstream                                          |
+| `backup.database` | off  | StartOS takes the database dump; Immich's own dumps would duplicate it onto the volume being backed up |
 
-| Setting            | Action                    | Description                                                                                      |
-| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------ |
-| SMTP               | Configure SMTP            | Email notifications                                                                              |
-| Primary URL        | Set Primary URL           | External domain used for public share links                                                      |
-| Data Sources       | Connect Photo Sources     | Mount File Browser / Nextcloud into Immich (read-only) so they can be used as external libraries |
-| External Libraries | Manage External Libraries | Live two-way editor over Immich's external libraries (create/edit/delete, with owner)            |
-| Admin Password     | Reset Admin Password      | Generate new admin credentials                                                                   |
+**The direct write exists because the API cannot be used yet.** Immich's config endpoint is admin-key-gated, and on a fresh install there is no admin until you complete sign-up — so a write through the API could never run before Immich first reads its config. The trade-off is that this bypasses the update API and depends on the schema staying stable, which is why a version bump has a checklist attached.
 
-### Settings Forced by StartOS (not editable in Immich UI)
-
-StartOS reasserts the following values on every startup. Editing them in the Immich Admin UI will not persist across restarts.
-
-| Field                     | Value                | Reason                                                                                  |
-| ------------------------- | -------------------- | --------------------------------------------------------------------------------------- |
-| `newVersionCheck.enabled` | `false`              | StartOS manages Immich updates; suppresses the "new version available" modal            |
-| `backup.database.enabled` | `false`              | StartOS backs up the database via `pg_dump`; Immich's internal dumps are duplicate work |
-| `server.externalDomain`   | Selected primary URL | Keeps Immich's public share links in sync with a StartOS-known URL                      |
-
-The first two are enforced from the very first boot. `server.externalDomain` applies once your admin account exists and a URL has been chosen via the Set Primary URL action.
-
-### Settings Managed via Immich Web UI
-
-All other Immich settings are configured through the web interface:
-
-- User management
-- Storage templates
-- Machine learning settings
-- Job queues
-- Server settings
-- Notification preferences (after SMTP configured)
-
----
-
-## Network Access and Interfaces
-
-| Interface | Port | Protocol | Purpose              |
-| --------- | ---- | -------- | -------------------- |
-| Web UI    | 2283 | HTTP     | Immich web interface |
-
-**Access methods (StartOS 0.4.0):**
-
-- LAN IP with unique port
-- `<hostname>.local` with unique port
-- Tor `.onion` address
-- Custom domains (if configured)
-
-**Mobile app connection:** Use any of the above URLs in the Immich mobile app settings.
-
----
-
-## Actions (StartOS UI)
-
-Set Primary URL, Configure SMTP, and Connect Photo Sources write `store.json` keys that `main` reads reactively (`.const`), so saving any of them while the service is running re-runs `setupMain` and restarts the daemon chain automatically — there is no manual restart step. All three are available with the service stopped too, in which case the change simply applies on next start. Manage External Libraries and Reset Admin Password act on the live Immich API instead and restart nothing.
-
-### Set Primary URL
-
-| Property     | Value                                                        |
-| ------------ | ------------------------------------------------------------ |
-| ID           | `set-primary-url`                                            |
-| Name         | Set Primary URL                                              |
-| Visibility   | Enabled                                                      |
-| Availability | Any status                                                   |
-| Purpose      | Choose which Immich URL is advertised as the external domain |
-
-Immich embeds its external domain in public share links (albums, assets). This action lets you pick a URL from the available non-local interfaces (LAN IP, `.local`, Tor, custom domains). On first install the `.local` URL is selected by default. If the previously selected URL is removed (e.g., Tor disabled, custom domain deleted), a critical task prompts you to pick a new one.
-
-The saved value is pushed to Immich's `server.externalDomain` by the `apply-system-config` oneshot on the restart that follows.
-
-### Configure SMTP
-
-| Property     | Value                      |
-| ------------ | -------------------------- |
-| ID           | `configure-smtp`           |
-| Name         | Configure SMTP             |
-| Visibility   | Enabled                    |
-| Availability | Any status                 |
-| Purpose      | Enable email notifications |
-
-**Options:**
-
-- **Disabled** — No email notifications
-- **System SMTP** — Use StartOS system SMTP server
-- **Custom** — Enter your own SMTP credentials
-
-The credentials are pushed to Immich's `notifications.smtp` by the `apply-system-config` oneshot on the restart that follows. Choosing **Disabled** leaves Immich's existing SMTP settings untouched rather than clearing them.
-
-### Connect Photo Sources
-
-| Property     | Value                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| ID           | `connect-sources`                                                                                        |
-| Name         | Connect Photo Sources                                                                                    |
-| Group        | External Libraries                                                                                       |
-| Visibility   | Enabled                                                                                                  |
-| Availability | Any status                                                                                               |
-| Purpose      | Grant Immich read-only access to another service's files so it can be used as an external library source |
-
-Toggle **File Browser** and/or **Nextcloud** on to mount that service's volume read-only into the Immich container (`/mnt/filebrowser`, `/mnt/nextcloud`). This is the **prerequisite** for using a source as an external library — a source must be connected here before it can be selected anywhere:
-
-- In **Manage External Libraries**, only connected sources appear as options; unconnected ones are not offered.
-- In the **Immich admin UI** (Administration → Libraries), **any Immich admin can create their own external library** against a connected source, choosing the owning user themselves. This is the way to give a non-admin user a library owned by them, or to set one up without the admin wanting one of their own.
-
-Backwards compatibility: upgrading to `3.1.0:1` runs a migration that turns on whichever sources the install's existing libraries already used, so those libraries keep working and there is nothing to do after the update.
-
-Connecting a source mounts the whole volume read-only, so its files are readable by every Immich admin (Immich gates external libraries on admin and does not sandbox paths per-admin). Saving rebuilds the server's mounts on the restart that follows. Disconnecting a source in use does not delete its libraries — their paths simply stop resolving, and they fall back to **Custom paths** in Manage External Libraries.
-
-### Manage External Libraries
-
-| Property     | Value                                                                               |
-| ------------ | ----------------------------------------------------------------------------------- |
-| ID           | `external-libraries`                                                                |
-| Name         | Manage External Libraries                                                           |
-| Group        | External Libraries                                                                  |
-| Visibility   | Enabled                                                                             |
-| Availability | Only when running                                                                   |
-| Purpose      | Create, edit, and delete external libraries — a live view of Immich's own libraries |
-
-This action is a **live, two-way editor over Immich's external libraries**, not a separate config store:
-
-- It reads the real libraries straight from Immich, so libraries you created in **Immich's admin UI** (Administration → Libraries) also appear here.
-- It correlates by Immich library id, so **renaming** edits the library in place (no duplicates) and **removing a row deletes the library** in Immich.
-- Each library has an **owner** (the Immich user whose timeline the photos appear in) — set when the library is created and, per Immich, **not changeable afterward**.
-
-Because it talks to the live Immich API, it's only available while the service is running.
-
-**Fields (per library):**
-
-- **Immich User** — a dropdown of your Immich users, fetched live from Immich each time you open the action (so new users appear without a restart); defaults to the admin. Don't confuse this with the Nextcloud user below (whose _files_ are read).
-- **Name** — display name.
-- **Source** — pick the source, and its folders appear beneath it:
-  - **File Browser** — a **Folders** list (one row per folder, e.g. `Photos`).
-  - **Nextcloud** — a user dropdown (users discovered on the Nextcloud volume) plus a **Folders** list under that user's files.
-  - **Custom paths** — an **Import Paths** list of full paths, for libraries that span multiple Nextcloud users, mix sources, or use paths outside the mounts.
-
-  Only connected sources appear as File Browser / Nextcloud (connect them first via Connect Photo Sources); **Custom paths** is always available. A freshly switched source starts with no folder rows — click **Add** to enter one.
-
-**Every Immich library is shown.** A library maps to File Browser or Nextcloud when all its paths fit a single connected source; anything else (multiple folders across users, mixed sources, unrecognized paths) shows under **Custom paths**. Nothing is silently hidden, and a library added/edited in Immich's own UI — including adding folders — round-trips here. Adding a second folder to a library no longer makes it disappear.
-
-### Reset Admin Password
-
-| Property     | Value                          |
-| ------------ | ------------------------------ |
-| ID           | `reset-admin-password`         |
-| Name         | Reset Admin Password           |
-| Visibility   | Enabled                        |
-| Availability | Only when running              |
-| Purpose      | Generate new admin credentials |
-
-**Output:** Displays the new randomly generated password.
-
----
+Everything else Immich exposes is yours, edited in its own admin UI. The package re-asserts only the two above, plus the external domain and SMTP when you have set them.
 
 ## Dependencies
 
-### File Browser
+Two, both optional, and each declared only while it is switched on as a photo source.
 
-| Property           | Value                                                              |
-| ------------------ | ------------------------------------------------------------------ |
-| Required           | Optional                                                           |
-| Version constraint | `>= 2.63.18:3`                                                     |
-| Health checks      | None                                                               |
-| Mounted volumes    | `data` → `/mnt/filebrowser` (read-only)                            |
-| Purpose            | External library source for indexing photos stored in File Browser |
+| Dependency    | Kind     | Required when                        |
+| ------------- | -------- | ------------------------------------ |
+| `filebrowser` | `exists` | File Browser is on as a photo source |
+| `nextcloud`   | `exists` | Nextcloud is on as a photo source    |
 
-### Nextcloud
+Both volumes are mounted read-only. `exists` rather than `running`, because Immich reads the files off the volume and does not need the other service up.
 
-| Property           | Value                                                           |
-| ------------------ | --------------------------------------------------------------- |
-| Required           | Optional                                                        |
-| Version constraint | `>= 33.0.6:1`                                                   |
-| Health checks      | None                                                            |
-| Mounted volumes    | `nextcloud` → `/mnt/nextcloud` (read-only)                      |
-| Purpose            | External library source for indexing photos stored in Nextcloud |
+## Network Access and Interfaces
 
-A dependency is pulled in only when its source is connected — either via the **Connect Photo Sources** action or by configuring an external library that uses it.
+One interface, serving the web app, the API, and the mobile apps.
 
----
+| Interface | Id   | Type | Port | Description                                              |
+| --------- | ---- | ---- | ---- | -------------------------------------------------------- |
+| Web UI    | `ui` | ui   | 2283 | The Immich web interface for managing your photo library |
 
-## Backups and Restore
+The port is bound on the `ui-multi` MultiHost and is not masked. The mobile apps take the same address.
 
-**Database:** Uses `pg_dump`/`pg_restore` for PostgreSQL instead of raw volume rsync. The dump is written directly to the backup target.
+**The primary URL is a separate setting from the addresses.** Immich embeds it in public share links, so it has to be an address that works for whoever you send a link to — see [Set Primary URL](#actions).
 
-**Volumes backed up via rsync:**
+## Installation and First-Run Flow
 
-- `startos` volume — Configuration and credentials
-- `upload` volume — All photos and videos
+**Install brings the whole stack up once, to completion, before the service ever starts.** That run is what makes Immich apply its database migrations and create `system_metadata`; the enforced defaults are then written into that row, so the suppressed settings are in effect on the very first user-facing boot rather than the second. It is allowed ten minutes.
 
-**NOT included in backup:**
+No credential is shown, and no task is raised on a fresh install. **The first account you create in the web UI becomes the administrator** — Immich's own sign-up flow, not something this package drives.
 
-- `db` volume — Not rsynced directly; database is captured via `pg_dump`
-- `model-cache` volume — ML models are re-downloaded as needed
+Init picks the `.local` address as the primary URL when none is set. Several of the package's own oneshots do nothing until that admin exists: creating the package's API key, and pushing the external domain and SMTP into Immich's config all need an admin key, so they no-op and retry on each start until sign-up is done.
 
-**Restore behavior:**
+## Actions
 
-- All photos, albums, and metadata restored
-- Database is rebuilt from dump via `pg_restore`
-- User accounts preserved
-- External library configurations restored (re-scan needed)
+Five actions in two groups.
 
----
+### Set Primary URL
+
+Chooses which published address Immich advertises as its external domain.
+
+- **What it changes:** `primaryUrl` in `store.json`; a oneshot pushes it into Immich's config on the next start.
+- **Cost:** seconds, then a restart.
+- **Repeat safety:** idempotent.
+- **This is what public share links are built from.** A link generated while the wrong address was set keeps pointing at that address.
+
+### Configure SMTP
+
+Sets up outbound email for Immich's notifications.
+
+- **What it changes:** `smtp` in `store.json`; pushed into Immich's config on the next start.
+- **Cost:** seconds, then a restart.
+- **Repeat safety:** idempotent; the form is pre-filled.
+- **Choosing "disabled" leaves Immich's existing credentials in place** rather than clearing them — it stops this package managing the setting, it does not turn email off inside Immich.
+
+### Reset Admin Password
+
+Generates a new password for the admin account. Run it when locked out.
+
+- **Cost:** seconds. Only while running, since it goes through Immich's API.
+- **Repeat safety:** safe to re-run; each run generates a fresh password.
+- **It fails with a clear error if no admin exists yet** — that is the sign-up flow not having been completed, not a fault.
+
+### External Libraries — Connect Photo Sources
+
+Chooses which other StartOS services Immich may read from.
+
+- **What it changes:** `exposedSources` in `store.json`, and through it the package's dependencies and the server container's read-only mounts.
+- **Cost:** seconds, then a restart to attach or detach the mount.
+- **Repeat safety:** idempotent. Turning a source off detaches the mount; **the files themselves are never touched**, since they belong to the other service.
+- **Switching a source on only makes the files reachable.** Immich still has to be told to index them, which is the next action — or the same thing in Immich's own admin UI.
+
+### External Libraries — Manage External Libraries
+
+Creates and removes the Immich libraries that point at those mounted paths.
+
+- **What it changes:** Immich's own library records, through its API.
+- **Cost:** seconds. Only while running.
+- **Removing a library deletes it from Immich** — its photo records, not the source files.
+- **A library's owner is fixed when it is created** and cannot be changed afterwards.
+- Nextcloud users are offered from a cached list, because the action cannot see the mount itself.
+
+## Tasks
+
+One task, and it cannot appear on a fresh install.
+
+| Task            | Severity   | Raised when                                      | Cleared when    |
+| --------------- | ---------- | ------------------------------------------------ | --------------- |
+| Set Primary URL | `critical` | A primary URL was set and is no longer published | The action runs |
+
+Init picks an address when none is stored, so this fires only when one that was in use goes away. `critical` because the stale value keeps being embedded in public share links, which fail for whoever receives them.
 
 ## Health Checks
 
-| Check            | Display Name  | Method                          |
-| ---------------- | ------------- | ------------------------------- |
-| PostgreSQL       | (internal)    | `pg_isready`                    |
-| Valkey           | (internal)    | `valkey-cli ping`               |
-| Machine Learning | (internal)    | Port 3003 listening             |
-| Web Interface    | Web Interface | Port 2283 listening (40s grace) |
+Four checks, and only one is displayed.
 
-**Messages:**
+| Check           | Displayed       | Method                 | Grace |
+| --------------- | --------------- | ---------------------- | ----- |
+| `postgres`      | Hidden          | `pg_isready`           | —     |
+| `valkey`        | Hidden          | `valkey-cli ping`      | —     |
+| `immich-ml`     | Hidden          | Its port is listening  | —     |
+| `immich-server` | "Web Interface" | Port 2283 is listening | 40 s  |
 
-- Success: "The web interface is ready"
-- Error: "The web interface is not ready"
+The three hidden checks gate the server, which waits on all of them — so a service that sits in "starting" is waiting on something below the only check you can see. PostgreSQL reports `loading` rather than failing while it initialises.
 
----
+A web-interface failure after the grace period is the application: most often the database refusing the connection, or a migration still running on a large library. The service logs name it.
+
+**A healthy service with search or faces not working is the ML container**, not the server. That is where an accelerator mismatch shows up — the stack runs and serves photos regardless.
+
+## Backups and Restore
+
+Mixed, and the exclusion is the important part.
+
+- **`db` is dumped, not copied.** `Backups.withPgDump` takes a logical dump, authenticating with the password from `store.json`, with the vector extension preloaded so the index types restore.
+- **`upload` and `startos` are copied wholesale** — every photo and video you have uploaded, plus the package's own state.
+- **`model-cache` is excluded.** The models are re-downloadable, and including them would add gigabytes to every backup for nothing.
+- **External library files are never in this backup.** They live on the source service's volume, and that service backs them up.
+
+**Expect this backup to be large** — it is the whole photo library. Restore returns the library, the database and the settings; the ML models re-download on first use.
 
 ## Limitations and Differences
 
-1. **External library sources** — The Manage External Libraries action offers File Browser and Nextcloud as guided sources (only once connected), plus a **Custom paths** option for anything else. Paths still only resolve to data mounted into the container (File Browser / Nextcloud), so Custom paths is for unusual shapes (multiple users, mixed sources), not arbitrary host directories. Every Immich library is shown and editable here, including ones created in Immich's own UI.
-2. **A library pointing at a disconnected source blocks saving the library form** — Immich validates import paths on update and rejects a missing one (`400 Invalid import path: Path does not exist (ENOENT)`). Manage External Libraries `PUT`s every submitted row, so if a source is disconnected while a library still references it, _any_ save of that form fails on that row and no other edit in the same save is applied. Recover by reconnecting the source, or by removing the stale library's row — removed rows are deleted, not `PUT`, so that path still works. Verified on StartOS 0.4.0.1; see `TODO.md`.
-3. **SMTP via action** — Configure through StartOS action rather than Immich web UI
-4. **No custom upload paths** — Upload location is fixed
-5. **Upstream version-check banner suppressed** — StartOS manages Immich updates, so `newVersionCheck.enabled` is forced to `false` in the system config on every startup to hide the "new version available" modal.
-6. **Immich's internal database backup disabled** — `backup.database.enabled` is forced to `false` because StartOS already dumps the database via `pg_dump` during its backup flow.
-7. **External domain managed via action** — `server.externalDomain` is set to the URL selected in the Set Primary URL action; editing it in the Immich Admin UI does not persist.
-
----
-
-## What Is Unchanged from Upstream
-
-- Full photo/video backup and management
-- Mobile app automatic backup (iOS, Android, F-Droid)
-- Machine learning features (face recognition, object detection, smart search)
-- Album management and sharing
-- Timeline and map views
-- Memories and favorites
-- User management and permissions
-- Partner sharing
-- External library scanning (via StartOS services)
-- All web UI features
-- REST API
-
----
-
-## Contributing
-
-Build and development workflow follow the StartOS packaging guide: <https://docs.start9.com/packaging>. Keep `README.md`, `instructions.md`, and `AGENTS.md` in sync with any change to user-visible behavior or package structure.
+1. **The variant is chosen by StartOS, not by you**, from the machine's hardware — and only the ML image varies.
+2. **Integrated AMD GPUs fall back to the CPU build** rather than attempting ROCm.
+3. **Only `generic` builds for aarch64.** All three accelerator variants are x86_64.
+4. **Immich's version check and its own database backups are held off**, written directly into the database rather than through its API.
+5. **The first account created is the administrator**, and no credential is generated for you.
+6. **Several package features do nothing until sign-up is complete** — the API key, external domain, and SMTP all need an admin to exist.
+7. **External library files are read-only and never copied**, so they are not in this package's backup.
+8. **A library's owner cannot be changed** after it is created.
+9. **Choosing "disabled" SMTP does not clear Immich's existing credentials.**
 
 ---
 
@@ -358,53 +238,49 @@ Build and development workflow follow the StartOS packaging guide: <https://docs
 
 ```yaml
 package_id: immich
-images:
-  immich-server: ghcr.io/immich-app/immich-server
-  immich-ml: ghcr.io/immich-app/immich-machine-learning
-  postgres: ghcr.io/immich-app/postgres
-  valkey: valkey/valkey
-architectures: [x86_64, aarch64] # GPU variants (cuda, rocm, openvino) are x86_64 only
-variants: [generic, cuda, rocm, openvino]
+image: ghcr.io/immich-app/immich-server # plus immich-machine-learning, postgres, valkey
+architectures:
+  - x86_64
+  - aarch64 # generic variant only; cuda, rocm and openvino are x86_64
+subcontainers:
+  - immich-server # the application; the one to attach to
+  - immich-ml # machine learning; the only image that varies by variant
+  - postgres # vector-extension build
+  - valkey # job queue and cache
 volumes:
-  upload: /usr/src/app/upload
-  db: /var/lib/postgresql/data
-  model-cache: /cache
-  startos: (StartOS state)
-ports:
-  ui: 2283
-dependencies:
-  filebrowser: optional (external library source, >= 2.63.18:3; pulled in when connected)
-  nextcloud: optional (external library source, >= 33.0.6:1; pulled in when connected)
+  upload: /usr/src/app/upload (server)
+  db: /var/lib/postgresql (postgres)
+  model-cache: /cache (immich-ml)
+  startos: host side (store.json)
+file_models:
+  - store.json # Immich's own config lives in its database, not a file
 startos_managed_env_vars:
+  - POSTGRES_DB
+  - POSTGRES_USER
+  - POSTGRES_PASSWORD
+  - POSTGRES_INITDB_ARGS
   - DB_HOSTNAME
   - DB_USERNAME
   - DB_PASSWORD
   - DB_DATABASE_NAME
   - REDIS_HOSTNAME
   - IMMICH_MACHINE_LEARNING_URL
-  - POSTGRES_DB
-  - POSTGRES_USER
-  - POSTGRES_PASSWORD
-  - POSTGRES_INITDB_ARGS
+dependencies: # both optional, exists; declared only while switched on as a photo source
+  - filebrowser # /mnt/filebrowser, read-only
+  - nextcloud # /mnt/nextcloud, read-only
+interfaces:
+  ui: { type: ui, port: 2283 }
 actions:
-  - configure-smtp (enabled, any)
-  - set-primary-url (enabled, any)
-  - connect-sources (enabled, any) # mounts filebrowser/nextcloud volumes read-only; decoupled from library config
-  - external-libraries (enabled, only-running) # live two-way mirror of Immich libraries, by id, with owner; deletes on row removal
-  - reset-admin-password (enabled, only-running)
-startos_forced_system_config:
-  newVersionCheck.enabled: false
-  backup.database.enabled: false
-  server.externalDomain: <primary URL from set-primary-url action>
+  - set-primary-url
+  - configure-smtp
+  - reset-admin-password # only-running
+  - connect-sources # External Libraries group
+  - external-libraries # External Libraries group; only-running
+tasks:
+  - { action: set-primary-url, severity: critical } # only when a set URL stops being published
 health_checks:
-  - pg_isready (postgres)
-  - valkey-cli ping (valkey)
-  - port_listening: 3003 (immich-ml)
-  - port_listening: 2283 (immich-server, 40s grace)
-backup_strategy: pg_dump (db) + volume rsync (startos, upload)
-excluded_from_backup:
-  - model-cache (re-downloaded as needed)
-not_available:
-  - Arbitrary external library paths
-  - Custom upload paths
+  - postgres # hidden
+  - valkey # hidden
+  - immich-ml # hidden
+  - immich-server # displayed "Web Interface"
 ```

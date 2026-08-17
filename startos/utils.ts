@@ -267,8 +267,8 @@ export async function hasAdmin(
  * next restart), and Immich picks up the values on that same boot since it
  * only reads config at bootstrap.
  *
- * See CLAUDE.md ("Enforced defaults via direct DB write") for the version-bump
- * checklist — this bypasses Immich's update API and depends on stable schema.
+ * This bypasses Immich's update API and depends on its schema staying stable,
+ * so re-verify the system_metadata shape on every upstream version bump.
  */
 export async function enforceSystemConfigDefaults(
   pgSub: PgExecSub,

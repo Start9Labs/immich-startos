@@ -22,6 +22,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
 
   // Projected, not whole-store: the oneshots below write `apiKey` and
   // `nextcloudUsers`, and a const spanning those restarts the stack on each.
+  // A projection, never the whole store: the ensure-api-key and
+  // cache-nextcloud-users oneshots write apiKey and nextcloudUsers, so a
+  // .const() spanning those keys would restart the whole stack on each of
+  // their own writes. Add a key here only if changing it should restart Immich.
   const store = await storeJson
     .read((s) => ({
       exposedSources: s.exposedSources,

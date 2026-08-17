@@ -5,7 +5,8 @@ const shape = z.object({
   postgresPassword: z.string().optional().catch(undefined),
   primaryUrl: z.string().optional().catch(undefined),
   smtp: smtpShape,
-  // Sole authority for which dependency volumes main mounts.
+  // Sole authority for which dependency volumes main mounts. externalLibraries
+  // is superseded and read only by the 3.1.0:1 migration — never a source of truth.
   exposedSources: z
     .object({
       filebrowser: z.boolean(),
