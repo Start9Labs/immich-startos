@@ -29,7 +29,7 @@ Match that tag (dropping the `@sha256:…` digest). `base-images` publishes imag
 
 The tag encodes `<pg-major>-vectorchord<vc>-pgvectors<pgvecto.rs>` — note `pgvectors` is **pgvecto.rs** (the `vectors` extension), a different extension from pgvector (`vector`), which is always present via the `pgvector/pgvector` base image. Newer base-images tags use `-pgvector<v>` because pgvecto.rs was dropped from the image and the pgvector version surfaced in its place.
 
-**A VectorChord version change is a database migration, not a pin refresh.** Immich validates the extension version at boot (`VECTORCHORD_VERSION_RANGE` in `server/src/constants.ts`) and, if the image's version is newer than what's installed, `DatabaseRepository.updateVectorExtension` automatically drops both vector indexes, runs `ALTER EXTENSION vchord UPDATE`, rewrites the `embedding` columns, and rebuilds the `clip_index` / `face_index` indexes — a long, unattended operation on a real photo library. Do not bump VectorChord across a major (0.x → 1.x) just because a newer tag exists. See `TODO.md`.
+**A VectorChord version change is a database migration, not a pin refresh.** Immich validates the extension version at boot (`VECTORCHORD_VERSION_RANGE` in `server/src/constants.ts`) and, if the image's version is newer than what's installed, `DatabaseRepository.updateVectorExtension` automatically drops both vector indexes, runs `ALTER EXTENSION vchord UPDATE`, rewrites the `embedding` columns, and rebuilds the `clip_index` / `face_index` indexes — a long, unattended operation on a real photo library. Do not bump VectorChord across a major (0.x → 1.x) just because a newer tag exists. See [#16](https://github.com/Start9Labs/immich-startos/issues/16).
 
 ### Valkey sidecar
 
