@@ -53,7 +53,7 @@ Four upstream images, unmodified — and **StartOS picks the accelerator build f
 | `postgres`      | Immich's database, on a vector-extension build           |
 | `valkey`        | The job queue and cache                                  |
 
-The server and ML containers both run with `runAsInit`, since each image supervises its own processes. The server waits on all three of the others; nothing else is ordered.
+The server and ML containers both run with `runAsInit`, since each image supervises its own processes. The server waits on postgres and valkey; nothing else is ordered.
 
 **Integrated AMD GPUs are excluded on purpose.** The `rocm` requirement matches discrete families by product name — Navi, Radeon RX, Radeon VII, Instinct — because ROCm is unreliable on integrated Radeon; those machines fall back to `generic` and run inference on CPU. The match is a positive allowlist rather than an iGPU exclusion because StartOS's regex engine has no lookahead.
 
@@ -203,7 +203,9 @@ Four checks, and only one is displayed.
 | `immich-ml`     | Hidden          | Its port is listening  | —     |
 | `immich-server` | "Web Interface" | Port 2283 is listening | 40 s  |
 
-The three hidden checks gate the server, which waits on all of them — so a service that sits in "starting" is waiting on something below the only check you can see. PostgreSQL reports `loading` rather than failing while it initialises.
+`postgres` and `valkey` gate the server — so a service that sits in "starting" is waiting on one of the two checks you cannot see. **`immich-ml` gates nothing.** Immich polls the ML server itself and logs it going healthy and unhealthy, and this package supports hardware where that container never starts at all, so gating the server on it would turn a degraded install into a dead one.
+
+A dependency reporting anything but success stops the server, which then reboots from scratch rather than resuming — a boot that takes minutes on a small board therefore cannot survive a probe that reports down while the service is merely busy. Both port checks are given 10 s rather than the SDK's 1 s default, and `pg_isready` 15 s rather than its own 3 s. Those are the ceilings past which the dependency really is unavailable; nothing here rides out a miss.
 
 A web-interface failure after the grace period is the application: most often the database refusing the connection, or a migration still running on a large library. The service logs name it.
 
