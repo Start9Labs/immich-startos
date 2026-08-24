@@ -156,11 +156,13 @@ export function buildCoreDaemons(
             postgresEnv.POSTGRES_USER,
             '-h',
             'localhost',
+            // 3s (the default) is short for a busy postgres; exec's cap is 30s.
+            '-t',
+            '15',
           ])
-          if (exitCode !== 0) {
-            return { result: 'loading', message: null }
-          }
-          return { result: 'success', message: null }
+          return exitCode === 0
+            ? { result: 'success', message: null }
+            : { result: 'failure', message: null }
         },
       },
       requires: [],
@@ -191,6 +193,7 @@ export function buildCoreDaemons(
           sdk.healthCheck.checkPortListening(effects, 3003, {
             successMessage: '',
             errorMessage: '',
+            timeout: 10_000,
           }),
       },
       requires: [],
@@ -205,13 +208,16 @@ export function buildCoreDaemons(
       ready: {
         display: serverReadyDisplay?.name ?? null,
         gracePeriod: 40000,
+        // The default 1s budget for reading four procfs files is exceeded on a
+        // loaded board, which surfaces as a spurious "not ready" to the user.
         fn: () =>
           sdk.healthCheck.checkPortListening(effects, uiPort, {
             successMessage: serverReadyDisplay?.success ?? '',
             errorMessage: serverReadyDisplay?.failure ?? '',
+            timeout: 10_000,
           }),
       },
-      requires: ['postgres', 'valkey', 'immich-ml'],
+      requires: ['postgres', 'valkey'],
     })
 }
 
