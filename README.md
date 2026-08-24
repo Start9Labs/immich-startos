@@ -180,6 +180,7 @@ Creates and removes the Immich libraries that point at those mounted paths.
 - **Cost:** seconds. Only while running.
 - **Removing a library deletes it from Immich** — its photo records, not the source files.
 - **A library's owner is fixed when it is created** and cannot be changed afterwards.
+- **Rows are applied independently.** A row Immich rejects — usually an import path whose source was disconnected — leaves the other rows and the deletions applied, and the error names the libraries that failed.
 - Nextcloud users are offered from a cached list, because the action cannot see the mount itself.
 
 ## Tasks

@@ -26,6 +26,8 @@ type ImmichUser = {
 type ExposedSources =
   { filebrowser: boolean; nextcloud: boolean } | null | undefined
 
+const asMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))
+
 // The variant set is chosen at render time, so the form infers `source` as
 // `{ selection: string; value: any }`. Parsing narrows it back.
 const sourceValue = z.discriminatedUnion('selection', [
@@ -317,29 +319,39 @@ export const externalLibraries = sdk.Action.withInput(
 
     const current = await immichApi<ImmichLibrary[]>('/libraries', apiKey)
 
+    // Immich validates import paths on update, so any row can be rejected.
     const submittedIds = new Set<string>()
+    const failures: string[] = []
     for (const row of submitted) {
-      const importPaths = buildImportPaths(sourceValue.parse(row.source))
-      if (row.id) {
-        // Immich fixes a library's owner at creation, so it isn't sent.
-        submittedIds.add(row.id)
-        await immichApi(`/libraries/${row.id}`, apiKey, {
-          method: 'PUT',
-          body: { name: row.name, importPaths },
-        })
-        await immichApi(`/libraries/${row.id}/scan`, apiKey, { method: 'POST' })
-      } else {
-        const ownerId = row.owner
-        if (!ownerId) {
-          throw new Error('Select an Immich user to own this library.')
+      // Registered before the attempt: a rejected row is still a submitted one,
+      // and must not be swept up by the deletion pass below.
+      if (row.id) submittedIds.add(row.id)
+      try {
+        const importPaths = buildImportPaths(sourceValue.parse(row.source))
+        if (row.id) {
+          // Immich fixes a library's owner at creation, so it isn't sent.
+          await immichApi(`/libraries/${row.id}`, apiKey, {
+            method: 'PUT',
+            body: { name: row.name, importPaths },
+          })
+          await immichApi(`/libraries/${row.id}/scan`, apiKey, {
+            method: 'POST',
+          })
+        } else {
+          const ownerId = row.owner
+          if (!ownerId) {
+            throw new Error('select an Immich user to own it')
+          }
+          const created = await immichApi<ImmichLibrary>('/libraries', apiKey, {
+            method: 'POST',
+            body: { ownerId, name: row.name, importPaths },
+          })
+          await immichApi(`/libraries/${created.id}/scan`, apiKey, {
+            method: 'POST',
+          })
         }
-        const created = await immichApi<ImmichLibrary>('/libraries', apiKey, {
-          method: 'POST',
-          body: { ownerId, name: row.name, importPaths },
-        })
-        await immichApi(`/libraries/${created.id}/scan`, apiKey, {
-          method: 'POST',
-        })
+      } catch (e) {
+        failures.push(`${row.name}: ${asMessage(e)}`)
       }
     }
 
@@ -348,7 +360,17 @@ export const externalLibraries = sdk.Action.withInput(
     const rendered = new Set(input.knownIds ?? [])
     for (const lib of current) {
       if (submittedIds.has(lib.id) || !rendered.has(lib.id)) continue
-      await immichApi(`/libraries/${lib.id}`, apiKey, { method: 'DELETE' })
+      try {
+        await immichApi(`/libraries/${lib.id}`, apiKey, { method: 'DELETE' })
+      } catch (e) {
+        failures.push(`${lib.name}: ${asMessage(e)}`)
+      }
+    }
+
+    if (failures.length) {
+      throw new Error(
+        `Saved, except for these libraries:\n${failures.join('\n')}`,
+      )
     }
 
     return null
