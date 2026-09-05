@@ -6,10 +6,10 @@ const { InputSpec, Value } = sdk
 
 const inputSpec = InputSpec.of({
   filebrowser: Value.toggle({
-    name: i18n('File Browser'),
+    name: i18n('FileBrowser Quantum'),
     default: false,
     description: i18n(
-      'Allow Immich to read photos and videos stored in File Browser.',
+      'Allow Immich to read photos and videos stored in FileBrowser Quantum.',
     ),
   }),
   nextcloud: Value.toggle({

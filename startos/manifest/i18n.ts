@@ -20,11 +20,12 @@ export const long = {
 }
 
 export const filebrowserDescription = {
-  en_US: 'Used to index photos and videos from File Browser',
-  es_ES: 'Se utiliza para indexar fotos y videos desde File Browser',
-  de_DE: 'Wird verwendet, um Fotos und Videos aus File Browser zu indexieren',
-  pl_PL: 'Używany do indeksowania zdjęć i filmów z File Browser',
-  fr_FR: 'Utilisé pour indexer les photos et vidéos depuis File Browser',
+  en_US: 'Used to index photos and videos from FileBrowser Quantum',
+  es_ES: 'Se utiliza para indexar fotos y videos desde FileBrowser Quantum',
+  de_DE:
+    'Wird verwendet, um Fotos und Videos aus FileBrowser Quantum zu indexieren',
+  pl_PL: 'Używany do indeksowania zdjęć i filmów z FileBrowser Quantum',
+  fr_FR: 'Utilisé pour indexer les photos et vidéos depuis FileBrowser Quantum',
 }
 
 export const nextcloudDescription = {

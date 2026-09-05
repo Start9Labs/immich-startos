@@ -135,7 +135,7 @@ function foldersBox() {
 }
 
 const filebrowserVariant = {
-  name: i18n('File Browser'),
+  name: i18n('FileBrowser Quantum'),
   spec: InputSpec.of({ folders: foldersBox() }),
 }
 
@@ -260,7 +260,7 @@ export const inputSpec = InputSpec.of({
                   ? 'nextcloud'
                   : 'custom',
               description: i18n(
-                'Where the photos are. Connect File Browser or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
+                'Where the photos are. Connect FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
               ),
               variants: Variants.of(variants),
               disabled: false,
@@ -278,7 +278,7 @@ export const externalLibraries = sdk.Action.withInput(
   async ({ effects }) => ({
     name: i18n('Manage External Libraries'),
     description: i18n(
-      'Configure external photo libraries from Nextcloud or File Browser',
+      'Configure external photo libraries from Nextcloud or FileBrowser Quantum',
     ),
     warning: i18n(
       'Removing a library here deletes it from Immich (its photo records — not the source files). The owner is set when the library is created and cannot be changed afterward.',

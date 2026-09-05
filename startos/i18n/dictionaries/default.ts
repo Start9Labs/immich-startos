@@ -23,8 +23,8 @@ const dict = {
   Nextcloud: 16,
   'Nextcloud User': 17,
   'The Nextcloud user account that owns the files.': 18,
-  'File Browser': 20,
-  'Configure external photo libraries from Nextcloud or File Browser': 21,
+  'FileBrowser Quantum': 20,
+  'Configure external photo libraries from Nextcloud or FileBrowser Quantum': 21,
   'Manage External Libraries': 25,
   'Immich User': 41,
   'The Immich user who owns this library — their timeline shows the photos. Defaults to the admin and cannot be changed after the library is created.': 42,
@@ -32,7 +32,7 @@ const dict = {
   Folders: 44,
   'Custom paths': 45,
   'Import Paths': 46,
-  'Where the photos are. Connect File Browser or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.': 47,
+  'Where the photos are. Connect FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.': 47,
 
   // actions/resetAdminPassword.ts
   'Reset Admin Password': 26,
@@ -48,7 +48,7 @@ const dict = {
   // actions/connectSources.ts
   'Connect Photo Sources': 35,
   'Choose which other StartOS services Immich may read photos and videos from. Turning a source on mounts its files into Immich (read-only) so you can add them as an external library — here or in the Immich admin UI. Immich restarts automatically to apply the change.': 36,
-  'Allow Immich to read photos and videos stored in File Browser.': 37,
+  'Allow Immich to read photos and videos stored in FileBrowser Quantum.': 37,
   'Allow Immich to read photos and videos stored in Nextcloud.': 38,
 
   // actions/setPrimaryUrl.ts
