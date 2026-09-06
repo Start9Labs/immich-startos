@@ -8,7 +8,7 @@ export const v_3_1_0_1 = VersionInfo.of({
 
 **External libraries**
 
-- New **Connect Photo Sources** action grants Immich read-only access to File Browser or Nextcloud, separately from configuring a library.
+- New **Connect Photo Sources** action grants Immich read-only access to FileBrowser Quantum or Nextcloud, separately from configuring a library.
 - **Manage External Libraries** is now a live, two-way editor of Immich's own libraries: assign each to any Immich user, index multiple folders, and rename or remove them without duplicates or orphans.
 - Libraries created in Immich's own admin UI appear here too. Existing libraries keep working — nothing to do after the update.
 

@@ -68,7 +68,7 @@ Four volumes, and the split matters for what a backup costs.
 | `model-cache` | `/cache` (immich-ml)             | Downloaded ML models                                     |
 | `startos`     | — (host side)                    | `store.json`; never mounted into a container             |
 
-An external library's source volume is additionally mounted into the **server** container, **read-only** — File Browser's at `/mnt/filebrowser`, Nextcloud's at `/mnt/nextcloud`. Immich indexes those files in place; it never copies them onto the `upload` volume, and it cannot modify them.
+An external library's source volume is additionally mounted into the **server** container, **read-only** — FileBrowser Quantum's at `/mnt/filebrowser`, Nextcloud's at `/mnt/nextcloud`. Immich indexes those files in place; it never copies them onto the `upload` volume, and it cannot modify them.
 
 ## File Models
 
@@ -106,10 +106,10 @@ Everything else Immich exposes is yours, edited in its own admin UI. The package
 
 Two, both optional, and each declared only while it is switched on as a photo source.
 
-| Dependency    | Kind     | Required when                        |
-| ------------- | -------- | ------------------------------------ |
-| `filebrowser` | `exists` | File Browser is on as a photo source |
-| `nextcloud`   | `exists` | Nextcloud is on as a photo source    |
+| Dependency    | Kind     | Required when                               |
+| ------------- | -------- | ------------------------------------------- |
+| `filebrowser` | `exists` | FileBrowser Quantum is on as a photo source |
+| `nextcloud`   | `exists` | Nextcloud is on as a photo source           |
 
 Both volumes are mounted read-only. `exists` rather than `running`, because Immich reads the files off the volume and does not need the other service up.
 
