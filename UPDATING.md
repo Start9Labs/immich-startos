@@ -54,7 +54,7 @@ The pin lives at `images.valkey.source.dockerTag` in `startos/manifest/index.ts`
 3. On every Immich version bump, verify the assumptions that `enforceSystemConfigDefaults` (in `startos/utils.ts`) relies on. It writes directly into `system_metadata[system-config]` via `psql` to suppress `newVersionCheck.enabled` and `backup.database.enabled` before any admin account exists. **Do not** replace it with the `/system-config` API (needs an admin key — breaks pre-sign-up) or `IMMICH_CONFIG_FILE` (locks the entire admin UI), and **do not** revert `initializeImmich` to a Postgres-only init — the full core-daemon chain under `runUntilSuccess` exists so Immich creates `system_metadata` before our first write. Confirm:
    - Table `system_metadata (key varchar PK, value jsonb)` still present (`server/src/schema/tables/system-metadata.table.ts`).
    - `SystemMetadataKey.SystemConfig` still equals `'system-config'` (`server/src/enum.ts`).
-   - Paths `newVersionCheck.enabled` and `backup.database.enabled` still booleans with the same meaning.
+   - Paths `newVersionCheck.enabled` and `backup.database.enabled` still booleans with the same meaning (`server/src/dtos/config.dto.ts`).
    - Config still stored as a partial merged with defaults (`server/src/utils/config.ts`: `buildConfig`, `updateConfig`).
 
    If any of those move, update `enforceSystemConfigDefaults` accordingly.
