@@ -7,6 +7,12 @@ export const setDependencies = sdk.setupDependencies(async ({ effects }) => {
 
   const deps: T.CurrentDependenciesResult<any> = {}
 
+  if (exposed?.nextexplorer) {
+    deps['nextexplorer'] = {
+      kind: 'exists',
+      versionRange: '>=2.2.7:0',
+    }
+  }
   if (exposed?.filebrowser) {
     deps['filebrowser'] = {
       kind: 'exists',

@@ -3,6 +3,7 @@ import {
   filebrowserDescription,
   long,
   nextcloudDescription,
+  nextexplorerDescription,
   short,
 } from './i18n'
 
@@ -143,6 +144,14 @@ export const manifest = setupManifest({
     device: [...(hwDevices[variant as keyof typeof hwDevices] ?? [])],
   },
   dependencies: {
+    nextexplorer: {
+      description: nextexplorerDescription,
+      optional: true,
+      metadata: {
+        title: 'NextExplorer',
+        icon: 'https://raw.githubusercontent.com/Start9Labs/nextexplorer-startos/04f7ecbfc31ad2205e0222dd7568fb881aa06c79/icon.svg',
+      },
+    },
     filebrowser: {
       description: filebrowserDescription,
       optional: true,

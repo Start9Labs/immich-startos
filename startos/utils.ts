@@ -9,6 +9,7 @@ export const uiPort = 2283 as const
 export const uiHostId = 'ui-multi'
 export const uiInterfaceId = 'ui'
 
+export const NEXTEXPLORER_MOUNTPOINT = '/mnt/nextexplorer' as const
 export const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser' as const
 export const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud' as const
 

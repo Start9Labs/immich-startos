@@ -5,6 +5,13 @@ import { i18n } from '../i18n'
 const { InputSpec, Value } = sdk
 
 const inputSpec = InputSpec.of({
+  nextexplorer: Value.toggle({
+    name: i18n('NextExplorer'),
+    default: false,
+    description: i18n(
+      'Allow Immich to read photos and videos stored in NextExplorer.',
+    ),
+  }),
   filebrowser: Value.toggle({
     name: i18n('FileBrowser Quantum'),
     default: false,
@@ -40,6 +47,7 @@ export const connectSources = sdk.Action.withInput(
   async ({ effects }) => {
     const exposed = await storeJson.read((s) => s.exposedSources).once()
     return {
+      nextexplorer: !!exposed?.nextexplorer,
       filebrowser: !!exposed?.filebrowser,
       nextcloud: !!exposed?.nextcloud,
     }
@@ -48,6 +56,7 @@ export const connectSources = sdk.Action.withInput(
   async ({ effects, input }) =>
     storeJson.merge(effects, {
       exposedSources: {
+        nextexplorer: input.nextexplorer,
         filebrowser: input.filebrowser,
         nextcloud: input.nextcloud,
       },

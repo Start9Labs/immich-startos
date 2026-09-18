@@ -9,6 +9,7 @@ const shape = z.object({
   // is superseded and read only by the 3.1.0:1 migration — never a source of truth.
   exposedSources: z
     .object({
+      nextexplorer: z.boolean().catch(false),
       filebrowser: z.boolean(),
       nextcloud: z.boolean(),
     })
