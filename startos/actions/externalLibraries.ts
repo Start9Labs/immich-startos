@@ -7,6 +7,7 @@ import {
   getOrMintApiKey,
   immichApi,
   NEXTCLOUD_MOUNTPOINT,
+  NEXTEXPLORER_MOUNTPOINT,
 } from '../utils'
 
 const { InputSpec, Value, List, Variants } = sdk
@@ -24,13 +25,19 @@ type ImmichUser = {
   isAdmin?: boolean
 }
 type ExposedSources =
-  { filebrowser: boolean; nextcloud: boolean } | null | undefined
+  | { nextexplorer?: boolean; filebrowser: boolean; nextcloud: boolean }
+  | null
+  | undefined
 
 const asMessage = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 // The variant set is chosen at render time, so the form infers `source` as
 // `{ selection: string; value: any }`. Parsing narrows it back.
 const sourceValue = z.discriminatedUnion('selection', [
+  z.object({
+    selection: z.literal('nextexplorer'),
+    value: z.object({ folders: z.array(z.string()) }),
+  }),
   z.object({
     selection: z.literal('filebrowser'),
     value: z.object({ folders: z.array(z.string()) }),
@@ -47,6 +54,11 @@ const sourceValue = z.discriminatedUnion('selection', [
 type SourceValue = z.infer<typeof sourceValue>
 
 function buildImportPaths(source: SourceValue): string[] {
+  if (source.selection === 'nextexplorer') {
+    return source.value.folders
+      .filter(Boolean)
+      .map((f) => `${NEXTEXPLORER_MOUNTPOINT}/${f}`)
+  }
   if (source.selection === 'filebrowser') {
     return source.value.folders
       .filter(Boolean)
@@ -65,8 +77,24 @@ function parseLibrary(
   importPaths: string[],
   exposed: ExposedSources,
 ): SourceValue {
+  const nePrefix = `${NEXTEXPLORER_MOUNTPOINT}/`
   const fbPrefix = `${FILEBROWSER_MOUNTPOINT}/`
   const ncRoot = `${NEXTCLOUD_MOUNTPOINT}/data/`
+
+  if (importPaths.length > 0 && exposed?.nextexplorer) {
+    if (
+      importPaths.every(
+        (p) => p.startsWith(nePrefix) && p.length > nePrefix.length,
+      )
+    ) {
+      return {
+        selection: 'nextexplorer',
+        value: {
+          folders: importPaths.map((p) => p.slice(nePrefix.length)),
+        },
+      }
+    }
+  }
 
   if (importPaths.length > 0 && exposed?.filebrowser) {
     if (
@@ -108,7 +136,7 @@ function parseLibrary(
 
 // `minLength: null` so a freshly-switched variant starts with zero rows —
 // an auto-created row inherits the value of the sibling row it replaced.
-function foldersBox() {
+function foldersBox(placeholder = 'e.g. Photos') {
   return Value.list(
     List.text(
       {
@@ -128,10 +156,15 @@ function foldersBox() {
             description: i18n('Must be a valid file path'),
           },
         ],
-        placeholder: 'e.g. Photos',
+        placeholder,
       },
     ),
   )
+}
+
+const nextexplorerVariant = {
+  name: i18n('NextExplorer'),
+  spec: InputSpec.of({ folders: foldersBox('e.g. Files/Photos') }),
 }
 
 const filebrowserVariant = {
@@ -248,19 +281,23 @@ export const inputSpec = InputSpec.of({
             const exposed = await storeJson.read((s) => s.exposedSources).once()
 
             const variants: Record<string, { name: string; spec: any }> = {}
+            if (exposed?.nextexplorer)
+              variants.nextexplorer = nextexplorerVariant
             if (exposed?.filebrowser) variants.filebrowser = filebrowserVariant
             if (exposed?.nextcloud) variants.nextcloud = nextcloudVariant
             variants.custom = customVariant
 
             return {
               name: i18n('Source'),
-              default: exposed?.filebrowser
-                ? 'filebrowser'
-                : exposed?.nextcloud
-                  ? 'nextcloud'
-                  : 'custom',
+              default: exposed?.nextexplorer
+                ? 'nextexplorer'
+                : exposed?.filebrowser
+                  ? 'filebrowser'
+                  : exposed?.nextcloud
+                    ? 'nextcloud'
+                    : 'custom',
               description: i18n(
-                'Where the photos are. Connect FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
+                'Where the photos are. Connect NextExplorer, FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
               ),
               variants: Variants.of(variants),
               disabled: false,
@@ -278,7 +315,7 @@ export const externalLibraries = sdk.Action.withInput(
   async ({ effects }) => ({
     name: i18n('Manage External Libraries'),
     description: i18n(
-      'Configure external photo libraries from Nextcloud or FileBrowser Quantum',
+      'Configure external photo libraries from NextExplorer, FileBrowser Quantum or Nextcloud',
     ),
     warning: i18n(
       'Removing a library here deletes it from Immich (its photo records — not the source files). The owner is set when the library is created and cannot be changed afterward.',

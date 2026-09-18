@@ -1,5 +1,6 @@
 import { manifest as filebrowserManifest } from 'filebrowser-startos/startos/manifest'
 import { manifest as nextcloudManifest } from 'nextcloud-startos/startos/manifest'
+import { manifest as nextexplorerManifest } from 'nextexplorer-startos/startos/manifest'
 import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
 import { sdk } from './sdk'
@@ -12,6 +13,7 @@ import {
   getPostgresEnv,
   immichApi,
   NEXTCLOUD_MOUNTPOINT,
+  NEXTEXPLORER_MOUNTPOINT,
   withAdminApiKey,
 } from './utils'
 
@@ -72,6 +74,15 @@ export const main = sdk.setupMain(async ({ effects }) => {
     subpath: null,
   })
 
+  if (exposed?.nextexplorer) {
+    serverMounts = serverMounts.mountDependency<typeof nextexplorerManifest>({
+      dependencyId: 'nextexplorer',
+      volumeId: 'data',
+      subpath: null,
+      mountpoint: NEXTEXPLORER_MOUNTPOINT,
+      readonly: true,
+    })
+  }
   if (exposed?.filebrowser) {
     serverMounts = serverMounts.mountDependency<typeof filebrowserManifest>({
       dependencyId: 'filebrowser',
