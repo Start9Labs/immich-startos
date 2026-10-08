@@ -6,19 +6,16 @@ const dict = {
   'Web Interface': 1,
   'The web interface is ready': 2,
   'The web interface is not ready': 3,
-  'Database is ready': 4,
-  'Cache is ready': 5,
 
   // interfaces.ts
   'Web UI': 6,
   'The Immich web interface for managing your photo library': 7,
 
   // actions/externalLibraries.ts
-  'The path to the folder containing your photos and videos.': 9,
+  'A folder within the source, written relative to its top level, such as Photos or Photos/2024.': 9,
   'Must be a valid file path': 10,
   'External Libraries': 11,
   Name: 12,
-  'A unique name to identify this library (e.g. "Family Photos")': 13,
   Source: 14,
   Nextcloud: 16,
   'Nextcloud User': 17,
@@ -32,8 +29,9 @@ const dict = {
   Folders: 44,
   'Custom paths': 45,
   'Import Paths': 46,
-  'Where the photos are. Connect NextExplorer, FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.': 47,
+  "Where the photos are. A service appears here once it is turned on in Connect Photo Sources.\n- NextExplorer: folders in NextExplorer\n- FileBrowser Quantum: folders in FileBrowser Quantum\n- Nextcloud: folders in one Nextcloud user's files\n- Custom paths: any other location, as full paths": 47,
   NextExplorer: 48,
+  'Full paths inside Immich. Connected sources are under /mnt/nextexplorer, /mnt/filebrowser and /mnt/nextcloud.': 50,
 
   // actions/resetAdminPassword.ts
   'Reset Admin Password': 26,
@@ -41,6 +39,7 @@ const dict = {
   'Password Reset': 28,
   'The admin password has been reset': 29,
   'New Password': 30,
+  'Replaces the Immich admin password with a new random one. The current password stops working, and the new one is shown only once.': 51,
 
   // actions/configureSmtp.ts
   'Configure SMTP': 22,
@@ -53,12 +52,12 @@ const dict = {
   'Allow Immich to read photos and videos stored in FileBrowser Quantum.': 37,
   'Allow Immich to read photos and videos stored in Nextcloud.': 38,
 
-  // actions/setPrimaryUrl.ts
+  // primaryUrl.ts
   URL: 31,
   'Set Primary URL': 32,
   'Choose which of your Immich URLs should be advertised as the external domain. Immich uses this URL when generating public share links for albums and assets. Immich restarts automatically to apply the change.': 33,
 
-  // init/taskSetPrimaryUrl.ts
+  // init/primaryUrlTask.ts
   'Primary URL removed. Select a new primary URL.': 34,
 } as const
 

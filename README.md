@@ -106,11 +106,11 @@ Everything else Immich exposes is yours, edited in its own admin UI. The package
 
 Three, all optional, and each declared only while it is switched on as a photo source.
 
-| Dependency     | Kind     | Required when                               |
-| -------------- | -------- | ------------------------------------------- |
-| `nextexplorer` | `exists` | NextExplorer is on as a photo source        |
-| `filebrowser`  | `exists` | FileBrowser Quantum is on as a photo source |
-| `nextcloud`    | `exists` | Nextcloud is on as a photo source           |
+| Dependency     | Kind     | Version       | Required when                               |
+| -------------- | -------- | ------------- | ------------------------------------------- |
+| `nextexplorer` | `exists` | `>=2.2.7:0`   | NextExplorer is on as a photo source        |
+| `filebrowser`  | `exists` | `>=2.63.18:3` | FileBrowser Quantum is on as a photo source |
+| `nextcloud`    | `exists` | `>=33.0.6:1`  | Nextcloud is on as a photo source           |
 
 Every source volume is mounted read-only. NextExplorer's volume root holds one directory per drive, so its folders start with the drive name (`Files/Photos`). `exists` rather than `running`, because Immich reads the files off the volume and does not need the other service up.
 
@@ -124,7 +124,7 @@ One interface, serving the web app, the API, and the mobile apps.
 
 The port is bound on the `ui-multi` MultiHost and is not masked. The mobile apps take the same address.
 
-**The primary URL is a separate setting from the addresses.** Immich embeds it in public share links, so it has to be an address that works for whoever you send a link to — see [Set Primary URL](#actions).
+**The primary URL is a separate setting from the addresses.** Immich embeds it in public share links, so it has to be an address that works for whoever you send a link to — see [Set Primary URL](#actions). Open UI prefers the primary URL when the viewer's connection can reach it.
 
 ## Installation and First-Run Flow
 
@@ -132,7 +132,7 @@ The port is bound on the `ui-multi` MultiHost and is not masked. The mobile apps
 
 No credential is shown, and no task is raised on a fresh install. **The first account you create in the web UI becomes the administrator** — Immich's own sign-up flow, not something this package drives.
 
-Init picks the `.local` address as the primary URL when none is set. Several of the package's own oneshots do nothing until that admin exists: creating the package's API key, and pushing the external domain and SMTP into Immich's config all need an admin key, so they no-op and retry on each start until sign-up is done.
+When no primary URL is stored, init stores the preferred address: a public domain, HTTPS first, else the `.local` address, else the first one offered. Several of the package's own oneshots do nothing until that admin exists: creating the package's API key, and pushing the external domain and SMTP into Immich's config all need an admin key, so they no-op and retry on each start until sign-up is done.
 
 ## Actions
 
@@ -144,6 +144,7 @@ Chooses which published address Immich advertises as its external domain.
 
 - **What it changes:** `primaryUrl` in `store.json`; a oneshot pushes it into Immich's config on the next start.
 - **Cost:** seconds, then a restart.
+- **A stored URL follows its hostname.** If the address moves to another port or scheme, Immich uses the new one without asking.
 - **Repeat safety:** idempotent.
 - **This is what public share links are built from.** A link generated while the wrong address was set keeps pointing at that address.
 
@@ -160,6 +161,7 @@ Sets up outbound email for Immich's notifications.
 
 Generates a new password for the admin account. Run it when locked out.
 
+- **Asks for confirmation first:** the current password stops working, and the new one is shown only once.
 - **Cost:** seconds. Only while running, since it goes through Immich's API.
 - **Repeat safety:** safe to re-run; each run generates a fresh password.
 - **It fails with a clear error if no admin exists yet** — that is the sign-up flow not having been completed, not a fault.
@@ -186,13 +188,13 @@ Creates and removes the Immich libraries that point at those mounted paths.
 
 ## Tasks
 
-One task, and it cannot appear on a fresh install.
+One task.
 
-| Task            | Severity   | Raised when                                      | Cleared when    |
-| --------------- | ---------- | ------------------------------------------------ | --------------- |
-| Set Primary URL | `critical` | A primary URL was set and is no longer published | The action runs |
+| Task            | Severity   | Raised when                                                         | Cleared when                                      |
+| --------------- | ---------- | ------------------------------------------------------------------- | ------------------------------------------------- |
+| Set Primary URL | `critical` | The stored primary URL's hostname is no longer one of its addresses | The hostname returns, or the action picks another |
 
-Init picks an address when none is stored, so this fires only when one that was in use goes away. `critical` because the stale value keeps being embedded in public share links, which fail for whoever receives them.
+Init stores an address when none is stored, so this fires only when the hostname in use goes away, or when there is no address to store at all. `critical` because the stale value keeps being embedded in public share links, which fail for whoever receives them.
 
 ## Health Checks
 
@@ -282,7 +284,7 @@ actions:
   - connect-sources # External Libraries group
   - external-libraries # External Libraries group; only-running
 tasks:
-  - { action: set-primary-url, severity: critical } # only when a set URL stops being published
+  - { action: set-primary-url, severity: critical } # while the stored URL's hostname is not published
 health_checks:
   - postgres # hidden
   - valkey # hidden

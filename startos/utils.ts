@@ -13,17 +13,6 @@ export const NEXTEXPLORER_MOUNTPOINT = '/mnt/nextexplorer' as const
 export const FILEBROWSER_MOUNTPOINT = '/mnt/filebrowser' as const
 export const NEXTCLOUD_MOUNTPOINT = '/mnt/nextcloud' as const
 
-export async function getNonLocalUrls(effects: T.Effects): Promise<string[]> {
-  return sdk.host
-    .getOwn(effects, uiHostId, (host) => {
-      if (!host) return []
-      const ui = Object.values(host.bindings)
-        .flatMap((b) => Object.values(b.interfaces))
-        .find((i) => i.id === uiInterfaceId)
-      return ui?.addressInfo.nonLocal.format() || []
-    })
-    .const()
-}
 export const POSTGRES_PATH = '/var/lib/postgresql' as const
 export const POSTGRES_DB = 'immich' as const
 export const POSTGRES_USER = 'postgres' as const

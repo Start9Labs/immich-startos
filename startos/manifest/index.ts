@@ -1,11 +1,5 @@
 import { setupManifest } from '@start9labs/start-sdk'
-import {
-  filebrowserDescription,
-  long,
-  nextcloudDescription,
-  nextexplorerDescription,
-  short,
-} from './i18n'
+import { long, short } from './i18n'
 
 const variant = process.env.VARIANT || 'generic'
 
@@ -21,6 +15,7 @@ const mlImageConfigs = {
     },
     arch: ['x86_64', 'aarch64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
   cuda: {
     source: {
@@ -28,6 +23,7 @@ const mlImageConfigs = {
     },
     arch: ['x86_64'],
     nvidiaContainer: true,
+    emulateMissing: false,
   },
   rocm: {
     source: {
@@ -35,6 +31,7 @@ const mlImageConfigs = {
     },
     arch: ['x86_64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
   openvino: {
     source: {
@@ -42,6 +39,7 @@ const mlImageConfigs = {
     },
     arch: ['x86_64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
 } as const
 
@@ -50,21 +48,25 @@ const serverImageConfigs = {
     source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
     arch: ['x86_64', 'aarch64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
   cuda: {
     source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
     arch: ['x86_64'],
     nvidiaContainer: true,
+    emulateMissing: false,
   },
   rocm: {
     source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
     arch: ['x86_64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
   openvino: {
     source: { dockerTag: `ghcr.io/immich-app/immich-server:${IMMICH_VERSION}` },
     arch: ['x86_64'],
     nvidiaContainer: false,
+    emulateMissing: false,
   },
 } as const
 
@@ -131,42 +133,18 @@ export const manifest = setupManifest({
           'ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0',
       },
       arch: ['x86_64', 'aarch64'],
+      emulateMissing: false,
     },
     valkey: {
       source: {
         dockerTag: 'valkey/valkey:9-alpine',
       },
       arch: ['x86_64', 'aarch64'],
+      emulateMissing: false,
     },
   },
   hardwareAcceleration: true,
   hardwareRequirements: {
     device: [...(hwDevices[variant as keyof typeof hwDevices] ?? [])],
-  },
-  dependencies: {
-    nextexplorer: {
-      description: nextexplorerDescription,
-      optional: true,
-      metadata: {
-        title: 'NextExplorer',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/nextexplorer-startos/04f7ecbfc31ad2205e0222dd7568fb881aa06c79/icon.svg',
-      },
-    },
-    filebrowser: {
-      description: filebrowserDescription,
-      optional: true,
-      metadata: {
-        title: 'FileBrowser Quantum',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/filebrowser-quantum-startos/e936a6c85a97b930b43cad5e9c0dd4898a2df567/icon.svg',
-      },
-    },
-    nextcloud: {
-      description: nextcloudDescription,
-      optional: true,
-      metadata: {
-        title: 'Nextcloud',
-        icon: 'https://raw.githubusercontent.com/Start9Labs/nextcloud-startos/f5025c524301aebe62d9a79ad720223b053e1bf2/icon.svg',
-      },
-    },
   },
 })
