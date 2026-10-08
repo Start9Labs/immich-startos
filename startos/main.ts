@@ -3,6 +3,7 @@ import { manifest as nextcloudManifest } from 'nextcloud-startos/startos/manifes
 import { manifest as nextexplorerManifest } from 'nextexplorer-startos/startos/manifest'
 import { storeJson } from './fileModels/store.json'
 import { i18n } from './i18n'
+import { primaryUrl } from './primaryUrl'
 import { sdk } from './sdk'
 import {
   buildCoreDaemons,
@@ -26,14 +27,13 @@ export const main = sdk.setupMain(async ({ effects }) => {
   const store = await storeJson
     .read((s) => ({
       exposedSources: s.exposedSources,
-      primaryUrl: s.primaryUrl,
       smtp: s.smtp,
     }))
     .const(effects)
   if (!store) throw new Error('store.json not found')
 
   const exposed = store.exposedSources
-  const primaryUrl = store.primaryUrl
+  const externalDomain = await primaryUrl.bestUsable(effects).const()
   const smtpStore = store.smtp
 
   let smtpCreds: {
@@ -166,7 +166,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         subcontainer: serverSub,
         exec: {
           fn: async () => {
-            if (!primaryUrl && !smtpCreds) return null
+            if (!externalDomain && !smtpCreds) return null
 
             await withAdminApiKey(
               postgresSub,
@@ -177,10 +177,10 @@ export const main = sdk.setupMain(async ({ effects }) => {
                   notifications?: { smtp?: unknown }
                 }>('/admin/config', token)
 
-                if (primaryUrl) {
+                if (externalDomain) {
                   config.server = {
                     ...config.server,
-                    externalDomain: primaryUrl,
+                    externalDomain,
                   }
                 }
                 if (smtpCreds) {

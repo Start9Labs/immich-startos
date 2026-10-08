@@ -16,7 +16,9 @@ export const resetAdminPassword = sdk.Action.withoutInput(
     description: i18n(
       'Reset the admin password to a new randomly generated password',
     ),
-    warning: null,
+    warning: i18n(
+      'Replaces the Immich admin password with a new random one. The current password stops working, and the new one is shown only once.',
+    ),
     allowedStatuses: 'only-running',
     group: null,
     visibility: 'enabled',

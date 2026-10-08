@@ -1,14 +1,14 @@
 import { FileHelper, smtpShape, z } from '@start9labs/start-sdk'
 import { sdk } from '../sdk'
 
-const shape = z.object({
+const shape = z.looseObject({
   postgresPassword: z.string().optional().catch(undefined),
   primaryUrl: z.string().optional().catch(undefined),
   smtp: smtpShape,
   // Sole authority for which dependency volumes main mounts. externalLibraries
   // is superseded and read only by the 3.1.0:1 migration — never a source of truth.
   exposedSources: z
-    .object({
+    .looseObject({
       nextexplorer: z.boolean().catch(false),
       filebrowser: z.boolean(),
       nextcloud: z.boolean(),
@@ -21,19 +21,19 @@ const shape = z.object({
   // Superseded by `exposedSources`; read only by 3.1.0:1's migration.
   externalLibraries: z
     .array(
-      z.object({
+      z.looseObject({
         name: z.string(),
         source: z.discriminatedUnion('selection', [
-          z.object({
+          z.looseObject({
             selection: z.literal('nextcloud'),
-            value: z.object({
+            value: z.looseObject({
               user: z.string(),
               path: z.string(),
             }),
           }),
-          z.object({
+          z.looseObject({
             selection: z.literal('filebrowser'),
-            value: z.object({
+            value: z.looseObject({
               path: z.string(),
             }),
           }),

@@ -145,7 +145,7 @@ function foldersBox(placeholder = 'e.g. Photos') {
         minLength: null,
         maxLength: null,
         description: i18n(
-          'The path to the folder containing your photos and videos.',
+          'A folder within the source, written relative to its top level, such as Photos or Photos/2024.',
         ),
       },
       {
@@ -201,7 +201,7 @@ const nextcloudVariant = {
       return {
         name: i18n('Nextcloud User'),
         values,
-        default: list.includes('admin') ? 'admin' : (list[0] ?? ''),
+        default: list.includes('admin') ? 'admin' : (list[0] ?? null),
         description: i18n('The Nextcloud user account that owns the files.'),
       }
     }),
@@ -219,6 +219,9 @@ const customVariant = {
           default: [],
           minLength: null,
           maxLength: null,
+          description: i18n(
+            'Full paths inside Immich. Connected sources are under /mnt/nextexplorer, /mnt/filebrowser and /mnt/nextcloud.',
+          ),
         },
         {
           patterns: [],
@@ -245,7 +248,7 @@ export const inputSpec = InputSpec.of({
           owner: Value.dynamicSelect(async ({ effects }) => {
             const apiKey = await getOrMintApiKey(effects)
             const values: Record<string, string> = {}
-            let adminId = ''
+            let adminId: string | null = null
             if (apiKey) {
               try {
                 const users = await immichApi<ImmichUser[]>(
@@ -255,7 +258,8 @@ export const inputSpec = InputSpec.of({
                 for (const u of users) {
                   values[u.id] = u.name ? `${u.name} (${u.email})` : u.email
                 }
-                adminId = users.find((u) => u.isAdmin)?.id ?? users[0]?.id ?? ''
+                adminId =
+                  users.find((u) => u.isAdmin)?.id ?? users[0]?.id ?? null
               } catch {}
             }
             return {
@@ -269,9 +273,7 @@ export const inputSpec = InputSpec.of({
           }),
           name: Value.text({
             name: i18n('Name'),
-            description: i18n(
-              'A unique name to identify this library (e.g. "Family Photos")',
-            ),
+            description: null,
             placeholder: 'My Photos',
             required: true,
             default: null,
@@ -297,7 +299,7 @@ export const inputSpec = InputSpec.of({
                     ? 'nextcloud'
                     : 'custom',
               description: i18n(
-                'Where the photos are. Connect NextExplorer, FileBrowser Quantum or Nextcloud first (Connect Photo Sources) to pick them here; use Custom paths for anything else.',
+                "Where the photos are. A service appears here once it is turned on in Connect Photo Sources.\n- NextExplorer: folders in NextExplorer\n- FileBrowser Quantum: folders in FileBrowser Quantum\n- Nextcloud: folders in one Nextcloud user's files\n- Custom paths: any other location, as full paths",
               ),
               variants: Variants.of(variants),
               disabled: false,
