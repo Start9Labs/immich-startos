@@ -175,6 +175,7 @@ export function buildCoreDaemons(
       subcontainer: subs.mlSub,
       exec: {
         command: sdk.useEntrypoint(),
+        env: { MACHINE_LEARNING_MODEL_REVISION: 'v2' },
         runAsInit: true,
       },
       ready: {

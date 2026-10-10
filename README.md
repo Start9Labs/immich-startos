@@ -53,7 +53,7 @@ Four upstream images, unmodified — and **StartOS picks the accelerator build f
 | `postgres`      | Immich's database, on a vector-extension build           |
 | `valkey`        | The job queue and cache                                  |
 
-The server and ML containers both run with `runAsInit`, since each image supervises its own processes. The server waits on postgres and valkey; nothing else is ordered.
+The server and ML containers both run with `runAsInit`, since each image supervises its own processes. The ML container runs with `MACHINE_LEARNING_MODEL_REVISION=v2`, Immich's optimized re-export of the same models. The server waits on postgres and valkey; nothing else is ordered.
 
 **Integrated AMD GPUs are excluded on purpose.** The `rocm` requirement matches discrete families by product name — Navi, Radeon RX, Radeon VII, Instinct — because ROCm is unreliable on integrated Radeon; those machines fall back to `generic` and run inference on CPU. The match is a positive allowlist rather than an iGPU exclusion because StartOS's regex engine has no lookahead.
 
@@ -271,6 +271,7 @@ startos_managed_env_vars:
   - DB_DATABASE_NAME
   - REDIS_HOSTNAME
   - IMMICH_MACHINE_LEARNING_URL
+  - MACHINE_LEARNING_MODEL_REVISION # v2, on immich-ml
 dependencies: # all optional, exists; declared only while switched on as a photo source
   - nextexplorer # /mnt/nextexplorer, read-only
   - filebrowser # /mnt/filebrowser, read-only
