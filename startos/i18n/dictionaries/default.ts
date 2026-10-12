@@ -52,6 +52,28 @@ const dict = {
   'Allow Immich to read photos and videos stored in FileBrowser Quantum.': 37,
   'Allow Immich to read photos and videos stored in Nextcloud.': 38,
 
+  // actions/listUsers.ts
+  'List Users': 52,
+  'List Immich users and their IDs, for a service that connects to an Immich account': 53,
+  'Immich Users': 54,
+
+  // actions/createApiKey.ts
+  'Create API Key': 55,
+  'Create an API key for an Immich user that can only view their library and edit the details of their photos and videos, for a service that connects to their account': 56,
+  'Immich User ID': 57,
+  Permissions: 58,
+  'API Key Created': 59,
+  'Enter a name for the key': 60,
+  'Choose at least one permission': 61,
+  'No Immich user has the ID ${userId}, or that user was deleted': 62,
+
+  // actions/deleteApiKey.ts
+  'Delete API Key': 63,
+  "Delete an Immich user's API key that can only view their library and edit the details of their photos and videos, for a service that disconnects from their account": 64,
+  'API Key ID': 65,
+  'Not an API key ID: ${keyId}': 66,
+  'Key ${keyId} belongs to another Immich user, or has permissions a dependent service cannot request': 67,
+
   // primaryUrl.ts
   URL: 31,
   'Set Primary URL': 32,

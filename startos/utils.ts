@@ -456,3 +456,71 @@ export async function getOrMintApiKey(
     (pgSub) => ensureApiKey(effects, pgSub, pgEnv),
   )
 }
+
+export async function listImmichUsers(
+  pgSub: PgExecSub,
+  pgEnv?: Record<string, string>,
+): Promise<{ id: string; email: string; name: string }[]> {
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `SELECT coalesce(json_agg(json_build_object('id', id, 'email', email, 'name', name) ORDER BY "createdAt"), '[]') FROM "user" WHERE "deletedAt" IS NULL`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return JSON.parse(res.stdout.toString())
+}
+
+// Any package that depends on Immich can mint keys with these, and delete keys limited to them.
+export const dependentKeyPermissions = {
+  'album.read': 'album.read',
+  'album.statistics': 'album.statistics',
+  'asset.read': 'asset.read',
+  'asset.statistics': 'asset.statistics',
+  'asset.update': 'asset.update',
+  'asset.view': 'asset.view',
+  'face.read': 'face.read',
+  'memory.read': 'memory.read',
+  'person.read': 'person.read',
+  'person.statistics': 'person.statistics',
+  'tag.read': 'tag.read',
+}
+
+/** Undefined when the id matches no user, or a deleted one. */
+export async function createUserApiKey(
+  pgSub: PgExecSub,
+  key: { userId: string; name: string; permissions: string[] },
+  pgEnv?: Record<string, string>,
+): Promise<{ id: string; secret: string } | undefined> {
+  const secret = randomBytes(32).toString('base64').replace(/\W/g, '')
+  const hashedKeyHex = createHash('sha256').update(secret).digest('hex')
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `WITH k AS (INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(key.name)}, decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, ARRAY[${key.permissions.map(sqlLiteral).join(', ')}]::character varying[] FROM "user" WHERE id::text = ${sqlLiteral(key.userId)} AND "deletedAt" IS NULL RETURNING id) SELECT id FROM k`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  const id = res.stdout.toString().trim()
+  return id ? { id, secret } : undefined
+}
+
+/** False when the key exists but belongs to another user or has a permission outside {@link dependentKeyPermissions}. */
+export async function deleteUserApiKey(
+  pgSub: PgExecSub,
+  key: { userId: string; keyId: string },
+  pgEnv?: Record<string, string>,
+): Promise<boolean> {
+  const allowed = Object.keys(dependentKeyPermissions)
+    .map(sqlLiteral)
+    .join(', ')
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `WITH target AS (SELECT id, ("userId"::text = ${sqlLiteral(key.userId)} AND permissions <@ ARRAY[${allowed}]::character varying[]) AS ok FROM api_key WHERE id::text = ${sqlLiteral(key.keyId)}), del AS (DELETE FROM api_key WHERE id IN (SELECT id FROM target WHERE ok) RETURNING id) SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM target) THEN 'gone' WHEN EXISTS (SELECT 1 FROM del) THEN 'deleted' ELSE 'refused' END`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  const outcome = res.stdout.toString().trim()
+  return outcome === 'deleted' || outcome === 'gone'
+}

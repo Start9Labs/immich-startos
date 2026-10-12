@@ -136,7 +136,7 @@ When no primary URL is stored, init stores the preferred address: a public domai
 
 ## Actions
 
-Five actions in two groups.
+Eight actions: five you run, in two groups, and three hidden ones that other services run.
 
 ### Set Primary URL
 
@@ -185,6 +185,34 @@ Creates and removes the Immich libraries that point at those mounted paths.
 - **A library's owner is fixed when it is created** and cannot be changed afterwards.
 - **Rows are applied independently.** A row Immich rejects — usually an import path whose source was disconnected — leaves the other rows and the deletions applied, and the error names the libraries that failed.
 - Nextcloud users are offered from a cached list, because the action cannot see the mount itself.
+
+### List Users (hidden)
+
+**Not user-facing.** A service that declares Immich as a dependency runs it to choose the Immich account to connect to.
+
+- **Output:** a group with one entry per account, oldest first. Each entry's name is the account's email, its description the account's name (null when blank), and its value the account's ID.
+- **Deleted accounts are left out**, including ones Immich can still restore, since Immich refuses their keys.
+- **Reads the database directly**, so before sign-up the list is empty rather than an error.
+- **Cost:** seconds. Only while running.
+
+### Create API Key (hidden)
+
+**Not user-facing.** A dependent service runs it to get its own key for one Immich account. Immich's API creates keys only for the account calling it, so this inserts the key into Immich's `api_key` table.
+
+- **Input:** the account's ID, a name for the key, and its permissions, from `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.update`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics` and `tag.read`. Anything else, `all` included, is refused, since every dependent service can run this action.
+- **Output:** a group of two entries whose untranslated names are `secret` and `id`: the key's secret, returned once since Immich stores only its hash, and the key's ID, which Delete API Key takes.
+- **Repeat safety:** each run creates another key, and **earlier keys keep working** until deleted with Delete API Key or revoked under Account Settings → API Keys in that account, where each is listed by its name.
+- **It fails** for an ID that matches no account, or a deleted one.
+- **Cost:** seconds. Only while running.
+
+### Delete API Key (hidden)
+
+**Not user-facing.** A dependent service runs it to remove a key it created, when it disconnects or replaces the key.
+
+- **Input:** the account's ID and the key's ID.
+- **It deletes only a key of that account whose permissions are all among those Create API Key grants**, so it can never remove a key someone made with wider permissions, such as `all`. It fails for any other key, and for a key ID that is not a lowercase UUID.
+- **Repeat safety:** idempotent. A key that is already gone, revoked in Immich or deleted by an earlier run, counts as deleted.
+- **Cost:** seconds. Only while running.
 
 ## Tasks
 
@@ -237,6 +265,7 @@ Mixed, and the exclusion is the important part.
 7. **External library files are read-only and never copied**, so they are not in this package's backup.
 8. **A library's owner cannot be changed** after it is created.
 9. **Choosing "disabled" SMTP does not clear Immich's existing credentials.**
+10. **A key another service created outlives that service** unless the service deletes it first, as it should when you disconnect it. Uninstalling the service alone leaves the key valid until it is revoked in Immich.
 
 ---
 
@@ -284,6 +313,9 @@ actions:
   - reset-admin-password # only-running
   - connect-sources # External Libraries group
   - external-libraries # External Libraries group; only-running
+  - list-users # hidden; run by dependent services; only-running
+  - create-api-key # hidden; run by dependent services; only-running
+  - delete-api-key # hidden; run by dependent services; only-running
 tasks:
   - { action: set-primary-url, severity: critical } # while the stored URL's hostname is not published
 health_checks:
