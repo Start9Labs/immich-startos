@@ -1,6 +1,7 @@
 import { T, utils } from '@start9labs/start-sdk'
 import { createHash, randomBytes } from 'crypto'
 import { DependentKey, storeJson } from './fileModels/store.json'
+import { i18n } from './i18n'
 import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
@@ -327,7 +328,11 @@ export async function immichApi<T = void>(
 
 export class NoAdminError extends Error {
   constructor() {
-    super('Immich admin user does not exist yet')
+    super(
+      i18n(
+        'Immich has no admin account yet. Create one in the Immich web interface first.',
+      ),
+    )
     this.name = 'NoAdminError'
   }
 }
