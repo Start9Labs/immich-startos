@@ -9,8 +9,10 @@ Immich is pulled in as pinned upstream images — there is no Dockerfile in this
 GitHub: <https://github.com/immich-app/immich>
 
 ```sh
-gh release view -R immich-app/immich --json tagName -q .tagName
+gh api 'repos/immich-app/immich/tags?per_page=100' --jq '.[].name'
 ```
+
+Choose the newest stable tag, excluding prereleases, and confirm its server and all four machine-learning image tags resolve before pinning it. Do not rely on GitHub's “Latest” release badge.
 
 The pin is `IMMICH_VERSION` near the top of `startos/manifest/index.ts`. It feeds every `immich-server` and `immich-machine-learning` image tag (`generic`, `cuda`, `rocm`, `openvino`) — bump it in one place and all variants follow.
 
