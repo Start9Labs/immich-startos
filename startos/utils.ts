@@ -1,6 +1,6 @@
 import { T, utils } from '@start9labs/start-sdk'
 import { createHash, randomBytes } from 'crypto'
-import { storeJson } from './fileModels/store.json'
+import { DependentKey, storeJson } from './fileModels/store.json'
 import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
@@ -454,5 +454,151 @@ export async function getOrMintApiKey(
     dbMounts,
     'immich-key',
     (pgSub) => ensureApiKey(effects, pgSub, pgEnv),
+  )
+}
+
+export async function listImmichUsers(
+  pgSub: PgExecSub,
+  pgEnv?: Record<string, string>,
+): Promise<{ id: string; email: string; name: string }[]> {
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `SELECT coalesce(json_agg(json_build_object('id', id, 'email', email, 'name', name) ORDER BY "createdAt"), '[]') FROM "user" WHERE "deletedAt" IS NULL`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return JSON.parse(res.stdout.toString())
+}
+
+export async function withDb<R>(
+  effects: T.Effects,
+  fn: (pgSub: PgExecSub, pgEnv: Record<string, string>) => Promise<R>,
+): Promise<R> {
+  const pgEnv = await getPostgresEnv(effects)
+  return sdk.SubContainer.withTemp(
+    effects,
+    { imageId: 'postgres' },
+    dbMounts,
+    'immich-db',
+    (pgSub) => fn(pgSub, pgEnv),
+  )
+}
+
+// The most a service that depends on Immich can be granted.
+export const dependentKeyPermissions = {
+  'album.read': 'album.read',
+  'album.statistics': 'album.statistics',
+  'asset.read': 'asset.read',
+  'asset.statistics': 'asset.statistics',
+  'asset.view': 'asset.view',
+  'face.read': 'face.read',
+  'memory.read': 'memory.read',
+  'person.read': 'person.read',
+  'person.statistics': 'person.statistics',
+  'tag.read': 'tag.read',
+  'user.read': 'user.read',
+}
+
+export function accessRequestId(
+  key: Pick<DependentKey, 'packageId' | 'keyHash' | 'permissions'>,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([key.packageId, key.keyHash, [...key.permissions].sort()]),
+    )
+    .digest('hex')
+}
+
+export const accessTaskId = (requestId: string) => `access-request:${requestId}`
+
+let dependentKeyQueue: Promise<void> = Promise.resolve()
+
+export function withDependentKeyLock<R>(
+  operation: () => Promise<R>,
+): Promise<R> {
+  const result = dependentKeyQueue.then(operation)
+  dependentKeyQueue = result.then(
+    () => undefined,
+    () => undefined,
+  )
+  return result
+}
+
+/** False when the account does not exist or was deleted. */
+export async function insertDependentKey(
+  pgSub: PgExecSub,
+  key: {
+    packageId: string
+    keyHash: string
+    userId: string
+    keyId: string
+    permissions: string[]
+  },
+  pgEnv?: Record<string, string>,
+): Promise<boolean> {
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `WITH k AS (INSERT INTO api_key (id, name, key, "userId", permissions) SELECT ${sqlLiteral(key.keyId)}, ${sqlLiteral(`StartOS: ${key.packageId}`)}, decode(${sqlLiteral(key.keyHash)}, 'hex'), id, ARRAY[${key.permissions.map(sqlLiteral).join(', ')}]::character varying[] FROM "user" WHERE id::text = ${sqlLiteral(key.userId)} AND "deletedAt" IS NULL RETURNING id) SELECT count(*) FROM k`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return res.stdout.toString().trim() === '1'
+}
+
+export async function existingApiKeyIds(
+  pgSub: PgExecSub,
+  ids: string[],
+  pgEnv?: Record<string, string>,
+): Promise<string[]> {
+  if (!ids.length) return []
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `SELECT id FROM api_key WHERE id::text IN (${ids.map(sqlLiteral).join(', ')})`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return res.stdout.toString().split('\n').filter(Boolean)
+}
+
+/** Revokes the matching keys and withdraws the matching requests. */
+export async function dropDependentKeys(
+  effects: T.Effects,
+  pgSub: PgExecSub,
+  match: (key: DependentKey) => boolean,
+  pgEnv?: Record<string, string>,
+): Promise<void> {
+  const dropped = (
+    (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+  ).filter(match)
+  if (!dropped.length) return
+
+  const keyIds = dropped.flatMap((k) => (k.keyId ? [k.keyId] : []))
+  if (keyIds.length) {
+    await pgSub.execFail(
+      psqlCmd(
+        `DELETE FROM api_key WHERE id::text IN (${keyIds.map(sqlLiteral).join(', ')})`,
+      ),
+      pgEnv ? { env: pgEnv } : undefined,
+    )
+  }
+  const pending = dropped.filter((k) => !k.keyId)
+  if (pending.length) {
+    await sdk.action.clearTask(
+      effects,
+      ...pending.map((k) => accessTaskId(accessRequestId(k))),
+    )
+  }
+
+  const hashes = new Set(dropped.map((k) => k.keyHash))
+  await storeJson.update(
+    effects,
+    (s) =>
+      s && {
+        ...s,
+        dependentKeys: s.dependentKeys.filter((k) => !hashes.has(k.keyHash)),
+      },
   )
 }
