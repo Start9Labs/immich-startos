@@ -1,6 +1,6 @@
 import { T, utils } from '@start9labs/start-sdk'
 import { createHash, randomBytes } from 'crypto'
-import { storeJson } from './fileModels/store.json'
+import { DependentKey, storeJson } from './fileModels/store.json'
 import { sdk } from './sdk'
 
 export const uiPort = 2283 as const
@@ -471,56 +471,111 @@ export async function listImmichUsers(
   return JSON.parse(res.stdout.toString())
 }
 
-// Any package that depends on Immich can mint keys with these, and delete keys limited to them.
+export async function withDb<R>(
+  effects: T.Effects,
+  fn: (pgSub: PgExecSub, pgEnv: Record<string, string>) => Promise<R>,
+): Promise<R> {
+  const pgEnv = await getPostgresEnv(effects)
+  return sdk.SubContainer.withTemp(
+    effects,
+    { imageId: 'postgres' },
+    dbMounts,
+    'immich-db',
+    (pgSub) => fn(pgSub, pgEnv),
+  )
+}
+
+// The most a service that depends on Immich can be granted.
 export const dependentKeyPermissions = {
   'album.read': 'album.read',
   'album.statistics': 'album.statistics',
   'asset.read': 'asset.read',
   'asset.statistics': 'asset.statistics',
-  'asset.update': 'asset.update',
   'asset.view': 'asset.view',
   'face.read': 'face.read',
   'memory.read': 'memory.read',
   'person.read': 'person.read',
   'person.statistics': 'person.statistics',
   'tag.read': 'tag.read',
+  'user.read': 'user.read',
 }
 
-/** Undefined when the id matches no user, or a deleted one. */
-export async function createUserApiKey(
-  pgSub: PgExecSub,
-  key: { userId: string; name: string; permissions: string[] },
-  pgEnv?: Record<string, string>,
-): Promise<{ id: string; secret: string } | undefined> {
-  const secret = randomBytes(32).toString('base64').replace(/\W/g, '')
-  const hashedKeyHex = createHash('sha256').update(secret).digest('hex')
-  const res = await pgSub.execFail(
-    psqlCmd(
-      `WITH k AS (INSERT INTO api_key (name, key, "userId", permissions) SELECT ${sqlLiteral(key.name)}, decode(${sqlLiteral(hashedKeyHex)}, 'hex'), id, ARRAY[${key.permissions.map(sqlLiteral).join(', ')}]::character varying[] FROM "user" WHERE id::text = ${sqlLiteral(key.userId)} AND "deletedAt" IS NULL RETURNING id) SELECT id FROM k`,
-      true,
-    ),
-    pgEnv ? { env: pgEnv } : undefined,
-  )
-  const id = res.stdout.toString().trim()
-  return id ? { id, secret } : undefined
-}
+export const accessTaskId = (keyHash: string) => `access-request:${keyHash}`
 
-/** False when the key exists but belongs to another user or has a permission outside {@link dependentKeyPermissions}. */
-export async function deleteUserApiKey(
+/** False when the account does not exist or was deleted. */
+export async function insertDependentKey(
   pgSub: PgExecSub,
-  key: { userId: string; keyId: string },
+  key: {
+    packageId: string
+    keyHash: string
+    userId: string
+    keyId: string
+    permissions: string[]
+  },
   pgEnv?: Record<string, string>,
 ): Promise<boolean> {
-  const allowed = Object.keys(dependentKeyPermissions)
-    .map(sqlLiteral)
-    .join(', ')
   const res = await pgSub.execFail(
     psqlCmd(
-      `WITH target AS (SELECT id, ("userId"::text = ${sqlLiteral(key.userId)} AND permissions <@ ARRAY[${allowed}]::character varying[]) AS ok FROM api_key WHERE id::text = ${sqlLiteral(key.keyId)}), del AS (DELETE FROM api_key WHERE id IN (SELECT id FROM target WHERE ok) RETURNING id) SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM target) THEN 'gone' WHEN EXISTS (SELECT 1 FROM del) THEN 'deleted' ELSE 'refused' END`,
+      `WITH k AS (INSERT INTO api_key (id, name, key, "userId", permissions) SELECT ${sqlLiteral(key.keyId)}, ${sqlLiteral(`StartOS: ${key.packageId}`)}, decode(${sqlLiteral(key.keyHash)}, 'hex'), id, ARRAY[${key.permissions.map(sqlLiteral).join(', ')}]::character varying[] FROM "user" WHERE id::text = ${sqlLiteral(key.userId)} AND "deletedAt" IS NULL RETURNING id) SELECT count(*) FROM k`,
       true,
     ),
     pgEnv ? { env: pgEnv } : undefined,
   )
-  const outcome = res.stdout.toString().trim()
-  return outcome === 'deleted' || outcome === 'gone'
+  return res.stdout.toString().trim() === '1'
+}
+
+export async function existingApiKeyIds(
+  pgSub: PgExecSub,
+  ids: string[],
+  pgEnv?: Record<string, string>,
+): Promise<string[]> {
+  if (!ids.length) return []
+  const res = await pgSub.execFail(
+    psqlCmd(
+      `SELECT id FROM api_key WHERE id::text IN (${ids.map(sqlLiteral).join(', ')})`,
+      true,
+    ),
+    pgEnv ? { env: pgEnv } : undefined,
+  )
+  return res.stdout.toString().split('\n').filter(Boolean)
+}
+
+/** Revokes the matching keys and withdraws the matching requests. */
+export async function dropDependentKeys(
+  effects: T.Effects,
+  pgSub: PgExecSub,
+  match: (key: DependentKey) => boolean,
+  pgEnv?: Record<string, string>,
+): Promise<void> {
+  const dropped = (
+    (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+  ).filter(match)
+  if (!dropped.length) return
+
+  const keyIds = dropped.flatMap((k) => (k.keyId ? [k.keyId] : []))
+  if (keyIds.length) {
+    await pgSub.execFail(
+      psqlCmd(
+        `DELETE FROM api_key WHERE id::text IN (${keyIds.map(sqlLiteral).join(', ')})`,
+      ),
+      pgEnv ? { env: pgEnv } : undefined,
+    )
+  }
+  const pending = dropped.filter((k) => !k.keyId)
+  if (pending.length) {
+    await sdk.action.clearTask(
+      effects,
+      ...pending.map((k) => accessTaskId(k.keyHash)),
+    )
+  }
+
+  const hashes = new Set(dropped.map((k) => k.keyHash))
+  await storeJson.update(
+    effects,
+    (s) =>
+      s && {
+        ...s,
+        dependentKeys: s.dependentKeys.filter((k) => !hashes.has(k.keyHash)),
+      },
+  )
 }

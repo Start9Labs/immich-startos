@@ -52,27 +52,36 @@ const dict = {
   'Allow Immich to read photos and videos stored in FileBrowser Quantum.': 37,
   'Allow Immich to read photos and videos stored in Nextcloud.': 38,
 
-  // actions/listUsers.ts
-  'List Users': 52,
-  'List Immich users and their IDs, for a service that connects to an Immich account': 53,
-  'Immich Users': 54,
+  // actions/requestAccess.ts
+  'Request Access': 52,
+  'Ask to read one Immich account with an API key the requesting service generated': 53,
+  'Key Hash': 54,
+  'SHA-256 of the API key, in lowercase hex': 55,
+  'Must be 64 lowercase hex characters': 56,
+  Permissions: 57,
+  'Only a service can request access': 58,
+  'Choose at least one permission': 59,
+  'This key was already requested': 60,
+  '${packageId} is asking to read an Immich account': 61,
 
-  // actions/createApiKey.ts
-  'Create API Key': 55,
-  'Create an API key for an Immich user that can only view their library and edit the details of their photos and videos, for a service that connects to their account': 56,
-  'Immich User ID': 57,
-  Permissions: 58,
-  'API Key Created': 59,
-  'Enter a name for the key': 60,
-  'Choose at least one permission': 61,
-  'No Immich user has the ID ${userId}, or that user was deleted': 62,
+  // actions/approveAccess.ts
+  'Approve Access': 62,
+  "Let a service read one Immich account's library with the permissions it asked for, or deny its request": 63,
+  Request: 64,
+  'The service asking, and what it would be allowed to read': 65,
+  Decision: 66,
+  Approve: 67,
+  'Immich Account': 68,
+  'The account whose library the service can read': 69,
+  Deny: 70,
+  'That request is no longer pending': 71,
+  'No Immich account has the ID ${userId}, or it was deleted': 72,
 
-  // actions/deleteApiKey.ts
-  'Delete API Key': 63,
-  "Delete an Immich user's API key that can only view their library and edit the details of their photos and videos, for a service that disconnects from their account": 64,
-  'API Key ID': 65,
-  'Not an API key ID: ${keyId}': 66,
-  'Key ${keyId} belongs to another Immich user, or has permissions a dependent service cannot request': 67,
+  // actions/revokeAccess.ts
+  'Revoke Access': 73,
+  "Delete the requesting service's API key, or withdraw its pending request": 74,
+  'SHA-256 of the API key, in lowercase hex. Leave empty for every key the service holds.': 75,
+  'Only a service can revoke its access': 76,
 
   // primaryUrl.ts
   URL: 31,

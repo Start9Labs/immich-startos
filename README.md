@@ -86,6 +86,7 @@ One model, and **Immich's own configuration is not a file** — it lives in the 
 | `exposedSources`   | **The sole authority** for which dependency volumes get mounted                |
 | `apiKey`           | A package-owned Immich API key, in plaintext — Immich stores only its hash     |
 | `nextcloudUsers`   | Cached usernames, because the action context cannot see the mount              |
+| `dependentKeys`    | Which service owns each requested or approved key, by the key's hash           |
 
 `externalLibraries` is a superseded key, read only by the `3.1.0:1` migration that moved authority to `exposedSources`.
 
@@ -136,7 +137,7 @@ When no primary URL is stored, init stores the preferred address: a public domai
 
 ## Actions
 
-Eight actions: five you run, in two groups, and three hidden ones that other services run.
+Eight actions: five you run, in two groups, and three hidden ones that let other services read an Immich account.
 
 ### Set Primary URL
 
@@ -186,41 +187,26 @@ Creates and removes the Immich libraries that point at those mounted paths.
 - **Rows are applied independently.** A row Immich rejects — usually an import path whose source was disconnected — leaves the other rows and the deletions applied, and the error names the libraries that failed.
 - Nextcloud users are offered from a cached list, because the action cannot see the mount itself.
 
-### List Users (hidden)
+### Connecting other services (hidden)
 
-**Not user-facing.** A service that declares Immich as a dependency runs it to choose the Immich account to connect to.
+**A service that depends on Immich reads an account only after you approve it.** It generates its own API key and sends only the key's SHA-256; Immich never holds a usable secret.
 
-- **Output:** a group with one entry per account, oldest first. Each entry's name is the account's email, its description the account's name (null when blank), and its value the account's ID.
-- **Deleted accounts are left out**, including ones Immich can still restore, since Immich refuses their keys.
-- **Reads the database directly**, so before sign-up the list is empty rather than an error.
-- **Cost:** seconds. Only while running.
+- **Request Access** (`request-access`), run by the service: the key's hash and the permissions it needs, from `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics`, `tag.read` and `user.read`. Nothing that changes, uploads, downloads, deletes or shares is grantable. It raises an `important` task; a repeat of the same request is a no-op. Runs in any state.
+- **Approve Access** (`approve-access`), run by you from that task: shows the service and the permissions it asked for, read-only, and you choose the account or deny. Approval inserts the key into Immich's `api_key` table — Immich's API creates keys only for the account calling it — named `StartOS: <service id>` in that account's API Keys list. It replaces any key the same service already holds for the same account. Only you can run it; no service can approve its own request. Only while running.
+- **Revoke Access** (`revoke-access`), run by the service: deletes one of its keys or withdraws one of its requests, by hash, or all of them with no hash. Idempotent. Only while running.
 
-### Create API Key (hidden)
+**The service's identity comes from StartOS**, never from its input, so a service can see and remove only its own keys and requests. `store.json`'s `dependentKeys` records which service owns each. The service learns it was approved when its key starts working, and which account it got from `GET /api/users/me`.
 
-**Not user-facing.** A dependent service runs it to get its own key for one Immich account. Immich's API creates keys only for the account calling it, so this inserts the key into Immich's `api_key` table.
-
-- **Input:** the account's ID, a name for the key, and its permissions, from `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.update`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics` and `tag.read`. Anything else, `all` included, is refused, since every dependent service can run this action.
-- **Output:** a group of two entries whose untranslated names are `secret` and `id`: the key's secret, returned once since Immich stores only its hash, and the key's ID, which Delete API Key takes.
-- **Repeat safety:** each run creates another key, and **earlier keys keep working** until deleted with Delete API Key or revoked under Account Settings → API Keys in that account, where each is listed by its name.
-- **It fails** for an ID that matches no account, or a deleted one.
-- **Cost:** seconds. Only while running.
-
-### Delete API Key (hidden)
-
-**Not user-facing.** A dependent service runs it to remove a key it created, when it disconnects or replaces the key.
-
-- **Input:** the account's ID and the key's ID.
-- **It deletes only a key of that account whose permissions are all among those Create API Key grants**, so it can never remove a key someone made with wider permissions, such as `all`. It fails for any other key, and for a key ID that is not a lowercase UUID.
-- **Repeat safety:** idempotent. A key that is already gone, revoked in Immich or deleted by an earlier run, counts as deleted.
-- **Cost:** seconds. Only while running.
+**On every start, Immich revokes the keys and drops the requests of services no longer installed**, and forgets keys you revoked in Immich yourself. A key can also be revoked any time under Account Settings → API Keys in its account.
 
 ## Tasks
 
-One task.
+Two tasks.
 
-| Task            | Severity   | Raised when                                                         | Cleared when                                      |
-| --------------- | ---------- | ------------------------------------------------------------------- | ------------------------------------------------- |
-| Set Primary URL | `critical` | The stored primary URL's hostname is no longer one of its addresses | The hostname returns, or the action picks another |
+| Task            | Severity    | Raised when                                                         | Cleared when                                                  |
+| --------------- | ----------- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Set Primary URL | `critical`  | The stored primary URL's hostname is no longer one of its addresses | The hostname returns, or the action picks another             |
+| Approve Access  | `important` | A service requests access — one task per request                    | You approve or deny that request, or the service withdraws it |
 
 Init stores an address when none is stored, so this fires only when the hostname in use goes away, or when there is no address to store at all. `critical` because the stale value keeps being embedded in public share links, which fail for whoever receives them.
 
@@ -265,7 +251,7 @@ Mixed, and the exclusion is the important part.
 7. **External library files are read-only and never copied**, so they are not in this package's backup.
 8. **A library's owner cannot be changed** after it is created.
 9. **Choosing "disabled" SMTP does not clear Immich's existing credentials.**
-10. **A key another service created outlives that service** unless the service deletes it first, as it should when you disconnect it. Uninstalling the service alone leaves the key valid until it is revoked in Immich.
+10. **A service you uninstall keeps its key until Immich next starts**, unless it revokes the key itself.
 
 ---
 
@@ -313,11 +299,12 @@ actions:
   - reset-admin-password # only-running
   - connect-sources # External Libraries group
   - external-libraries # External Libraries group; only-running
-  - list-users # hidden; run by dependent services; only-running
-  - create-api-key # hidden; run by dependent services; only-running
-  - delete-api-key # hidden; run by dependent services; only-running
+  - request-access # hidden; dependent services only
+  - approve-access # hidden; user only, through its task; only-running
+  - revoke-access # hidden; dependent services only; only-running
 tasks:
   - { action: set-primary-url, severity: critical } # while the stored URL's hostname is not published
+  - { action: approve-access, severity: important } # one per pending access request
 health_checks:
   - postgres # hidden
   - valkey # hidden

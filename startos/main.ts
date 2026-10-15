@@ -8,8 +8,10 @@ import { sdk } from './sdk'
 import {
   buildCoreDaemons,
   createCoreSubs,
+  dropDependentKeys,
   enforceSystemConfigDefaults,
   ensureApiKey,
+  existingApiKeyIds,
   FILEBROWSER_MOUNTPOINT,
   getPostgresEnv,
   immichApi,
@@ -159,6 +161,30 @@ export const main = sdk.setupMain(async ({ effects }) => {
           },
         },
         requires: ['immich-server', 'ensure-api-key'],
+      })
+      .addOneshot('reconcile-dependent-keys', {
+        subcontainer: postgresSub,
+        exec: {
+          fn: async () => {
+            const installed = new Set(await sdk.getInstalledPackages(effects))
+            await dropDependentKeys(
+              effects,
+              postgresSub,
+              (k) => !installed.has(k.packageId),
+            )
+            const keyIds = (
+              (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+            ).flatMap((k) => (k.keyId ? [k.keyId] : []))
+            const live = new Set(await existingApiKeyIds(postgresSub, keyIds))
+            await dropDependentKeys(
+              effects,
+              postgresSub,
+              (k) => !!k.keyId && !live.has(k.keyId),
+            )
+            return null
+          },
+        },
+        requires: ['immich-server', 'cache-nextcloud-users'],
       })
       // A "disabled" SMTP selection deliberately leaves Immich's existing
       // credentials in place rather than clearing them.

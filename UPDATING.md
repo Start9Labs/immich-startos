@@ -61,7 +61,7 @@ The pin lives at `images.valkey.source.dockerTag` in `startos/manifest/index.ts`
 
    If any of those move, update `enforceSystemConfigDefaults` accordingly.
 
-4. On every Immich version bump, verify what the direct `api_key` and `user` queries in `startos/utils.ts` rely on: the package's own keys (`withTempApiKey`, `ensureApiKey`) and the hidden List Users, Create API Key and Delete API Key actions that dependent services run. Confirm:
-   - `api_key` still has `id`, `name`, `key` (`bytea`, the SHA-256 of the secret), `"userId"` and `permissions` (`character varying[]`) (`server/src/schema/tables/api-key.table.ts`, `server/src/services/api-key.service.ts`).
+4. On every Immich version bump, verify what the direct `api_key` and `user` queries in `startos/utils.ts` rely on: the package's own keys (`withTempApiKey`, `ensureApiKey`) and the keys other services hold (Request, Approve and Revoke Access). Confirm:
+   - `api_key` still has `id`, `name`, `key` (`bytea`, the SHA-256 of the secret, which is how Immich authenticates a key), `"userId"` and `permissions` (`character varying[]`) (`server/src/schema/tables/api-key.table.ts`, `server/src/services/auth.service.ts`).
    - `user` still has `id`, `email`, `name`, `"isAdmin"`, `"createdAt"` and `"deletedAt"`, and deleting an account still sets `"deletedAt"` (`server/src/schema/tables/user.table.ts`, `server/src/services/user-admin.service.ts`).
-   - `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.update`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics` and `tag.read` still exist under those names (`server/src/enum.ts`). They are `dependentKeyPermissions` in `startos/utils.ts`, and a renamed one changes Create API Key's input, which dependent services pass by name.
+   - `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics`, `tag.read` and `user.read` still exist under those names and still grant only reads (`server/src/enum.ts`, `server/src/controllers/`). They are `dependentKeyPermissions` in `startos/utils.ts`, and services pass them by name.

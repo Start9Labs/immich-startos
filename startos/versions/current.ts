@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.3.3:0',
+  version: '3.3.3:1',
   releaseNotes: {
     en_US:
-      'Updated Immich to 3.3.3. Improves people-query performance on the Explore page and fixes memory dates in the mobile app across languages. Full release notes: https://github.com/immich-app/immich/releases/tag/v3.3.3',
+      "Other services can now ask to read an Immich account's photos, albums, people and tags. Each request appears as a task in Immich, where you choose the account or deny it, and an approved service's key is listed under Account Settings → API Keys in that account.",
     es_ES:
-      'Actualiza Immich a 3.3.3. Mejora el rendimiento de las consultas de personas en la página Explorar y corrige las fechas de los recuerdos en la aplicación móvil en todos los idiomas. Notas completas: https://github.com/immich-app/immich/releases/tag/v3.3.3',
+      'Otros servicios ahora pueden solicitar leer las fotos, álbumes, personas y etiquetas de una cuenta de Immich. Cada solicitud aparece como una tarea en Immich, donde usted elige la cuenta o la deniega, y la clave de un servicio aprobado aparece en Ajustes de la cuenta → Claves API de esa cuenta.',
     de_DE:
-      'Aktualisiert Immich auf 3.3.3. Verbessert die Leistung der Personenabfragen auf der Entdecken-Seite und korrigiert die Datumsanzeige von Erinnerungen in der mobilen App in allen Sprachen. Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.3.3',
+      'Andere Dienste können jetzt anfragen, die Fotos, Alben, Personen und Tags eines Immich-Kontos zu lesen. Jede Anfrage erscheint als Aufgabe in Immich, wo Sie das Konto wählen oder die Anfrage ablehnen, und der Schlüssel eines genehmigten Dienstes steht in diesem Konto unter Kontoeinstellungen → API-Schlüssel.',
     pl_PL:
-      'Aktualizuje Immich do wersji 3.3.3. Poprawia wydajność zapytań o osoby na stronie Odkrywaj i wyświetlanie dat wspomnień w aplikacji mobilnej we wszystkich językach. Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.3.3',
+      'Inne usługi mogą teraz prosić o odczyt zdjęć, albumów, osób i tagów konta Immich. Każda prośba pojawia się jako zadanie w Immich, gdzie wybierasz konto albo ją odrzucasz, a klucz zatwierdzonej usługi jest widoczny w tym koncie w Ustawienia konta → Klucze API.',
     fr_FR:
-      "Met à jour Immich vers la version 3.3.3. Améliore les performances des requêtes de personnes sur la page Explorer et corrige les dates des souvenirs dans l'application mobile dans toutes les langues. Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.3.3",
+      "D'autres services peuvent désormais demander à lire les photos, albums, personnes et étiquettes d'un compte Immich. Chaque demande apparaît comme une tâche dans Immich, où vous choisissez le compte ou la refusez, et la clé d'un service approuvé figure dans Paramètres du compte → Clés d'API de ce compte.",
   },
   migrations: {
     up: async ({ effects }) => {},
