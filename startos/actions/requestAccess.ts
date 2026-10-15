@@ -1,7 +1,12 @@
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { accessTaskId, dependentKeyPermissions } from '../utils'
+import {
+  accessRequestId,
+  accessTaskId,
+  dependentKeyPermissions,
+  withDependentKeyLock,
+} from '../utils'
 import { approveAccess } from './approveAccess'
 
 const { InputSpec, Value } = sdk
@@ -49,50 +54,51 @@ export const requestAccess = sdk.Action.withInput(
       throw new Error(i18n('Choose at least one permission'))
     }
 
-    const existing = (
-      (await storeJson.read((s) => s.dependentKeys).once()) ?? []
-    ).find((k) => k.keyHash === input.keyHash)
-    if (existing) {
-      if (
-        existing.packageId !== caller ||
-        existing.permissions.length !== input.permissions.length ||
-        !input.permissions.every((p) => existing.permissions.includes(p))
-      ) {
-        throw new Error(i18n('This key was already requested'))
+    return withDependentKeyLock(async () => {
+      const existing = (
+        (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+      ).find((k) => k.keyHash === input.keyHash)
+      if (existing) {
+        if (
+          existing.packageId !== caller ||
+          existing.permissions.length !== input.permissions.length ||
+          !input.permissions.every((p) => existing.permissions.includes(p))
+        ) {
+          throw new Error(i18n('This key was already requested'))
+        }
+        return null
       }
-      return null
-    }
 
-    await storeJson.update(
-      effects,
-      (s) =>
-        s && {
-          ...s,
-          dependentKeys: [
-            ...s.dependentKeys,
-            {
-              packageId: caller,
-              keyHash: input.keyHash,
-              permissions: input.permissions,
-              userId: null,
-              keyId: null,
-            },
-          ],
-        },
-    )
-    await sdk.action.createOwnTask(effects, approveAccess, 'important', {
-      reason: i18n('${packageId} is asking to read an Immich account', {
+      const request = {
         packageId: caller,
-      }),
-      replayId: accessTaskId(input.keyHash),
-      when: { condition: 'input-not-matches', once: true },
-      input: {
-        kind: 'partial',
-        accept: [{ request: input.keyHash }],
-        set: { request: input.keyHash },
-      },
-    })
+        keyHash: input.keyHash,
+        permissions: input.permissions,
+        userId: null,
+        keyId: null,
+      }
+      const requestId = accessRequestId(request)
+      await storeJson.update(
+        effects,
+        (s) =>
+          s && {
+            ...s,
+            dependentKeys: [...s.dependentKeys, request],
+          },
+      )
+      await sdk.action.createOwnTask(effects, approveAccess, 'important', {
+        reason: i18n('${packageId} is asking to read an Immich account', {
+          packageId: caller,
+        }),
+        replayId: accessTaskId(requestId),
+        when: { condition: 'input-not-matches', once: true },
+        input: {
+          kind: 'partial',
+          accept: [{ request: requestId }],
+          set: { request: requestId },
+        },
+      })
 
-    return null
+      return null
+    })
   },
 )

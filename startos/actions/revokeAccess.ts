@@ -1,6 +1,6 @@
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
-import { dropDependentKeys, withDb } from '../utils'
+import { dropDependentKeys, withDb, withDependentKeyLock } from '../utils'
 
 const { InputSpec, Value } = sdk
 
@@ -35,14 +35,16 @@ export const revokeAccess = sdk.Action.withInput(
   async ({ effects, input, caller }) => {
     if (!caller) throw new Error(i18n('Only a service can revoke its access'))
 
-    await withDb(effects, (pgSub, pgEnv) =>
-      dropDependentKeys(
-        effects,
-        pgSub,
-        (k) =>
-          k.packageId === caller &&
-          (!input.keyHash || k.keyHash === input.keyHash),
-        pgEnv,
+    await withDependentKeyLock(() =>
+      withDb(effects, (pgSub, pgEnv) =>
+        dropDependentKeys(
+          effects,
+          pgSub,
+          (k) =>
+            k.packageId === caller &&
+            (!input.keyHash || k.keyHash === input.keyHash),
+          pgEnv,
+        ),
       ),
     )
 

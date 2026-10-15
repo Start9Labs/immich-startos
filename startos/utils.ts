@@ -500,7 +500,30 @@ export const dependentKeyPermissions = {
   'user.read': 'user.read',
 }
 
-export const accessTaskId = (keyHash: string) => `access-request:${keyHash}`
+export function accessRequestId(
+  key: Pick<DependentKey, 'packageId' | 'keyHash' | 'permissions'>,
+): string {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([key.packageId, key.keyHash, [...key.permissions].sort()]),
+    )
+    .digest('hex')
+}
+
+export const accessTaskId = (requestId: string) => `access-request:${requestId}`
+
+let dependentKeyQueue: Promise<void> = Promise.resolve()
+
+export function withDependentKeyLock<R>(
+  operation: () => Promise<R>,
+): Promise<R> {
+  const result = dependentKeyQueue.then(operation)
+  dependentKeyQueue = result.then(
+    () => undefined,
+    () => undefined,
+  )
+  return result
+}
 
 /** False when the account does not exist or was deleted. */
 export async function insertDependentKey(
@@ -565,7 +588,7 @@ export async function dropDependentKeys(
   if (pending.length) {
     await sdk.action.clearTask(
       effects,
-      ...pending.map((k) => accessTaskId(k.keyHash)),
+      ...pending.map((k) => accessTaskId(accessRequestId(k))),
     )
   }
 

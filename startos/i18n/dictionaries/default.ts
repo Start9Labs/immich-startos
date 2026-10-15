@@ -75,6 +75,7 @@ const dict = {
   'The account whose library the service can read': 69,
   Deny: 70,
   'That request is no longer pending': 71,
+  'Only the user can approve access': 77,
   'No Immich account has the ID ${userId}, or it was deleted': 72,
 
   // actions/revokeAccess.ts

@@ -70,6 +70,7 @@ export default {
     74: 'Eliminar la clave API del servicio solicitante o retirar su solicitud pendiente',
     75: 'SHA-256 de la clave API, en hexadecimal en minúsculas. Déjelo vacío para todas las claves del servicio.',
     76: 'Solo un servicio puede revocar su acceso',
+    77: 'Solo el usuario puede aprobar el acceso',
   },
   de_DE: {
     0: 'Starte Immich',
@@ -140,6 +141,7 @@ export default {
     74: 'Den API-Schlüssel des anfragenden Dienstes löschen oder seine ausstehende Anfrage zurückziehen',
     75: 'SHA-256 des API-Schlüssels, als Hexadezimalwert in Kleinbuchstaben. Leer lassen für alle Schlüssel des Dienstes.',
     76: 'Nur ein Dienst kann seinen Zugriff widerrufen',
+    77: 'Nur der Benutzer kann den Zugriff genehmigen',
   },
   pl_PL: {
     0: 'Uruchamianie Immich',
@@ -210,6 +212,7 @@ export default {
     74: 'Usuń klucz API usługi wnioskującej albo wycofaj jej oczekującą prośbę',
     75: 'SHA-256 klucza API, szesnastkowo małymi literami. Pozostaw puste dla wszystkich kluczy usługi.',
     76: 'Tylko usługa może cofnąć swój dostęp',
+    77: 'Tylko użytkownik może zatwierdzić dostęp',
   },
   fr_FR: {
     0: 'Démarrage de Immich',
@@ -280,5 +283,6 @@ export default {
     74: 'Supprimer la clé API du service demandeur, ou retirer sa demande en attente',
     75: 'SHA-256 de la clé API, en hexadécimal minuscule. Laisser vide pour toutes les clés du service.',
     76: 'Seul un service peut révoquer son accès',
+    77: "Seul l'utilisateur peut approuver l'accès",
   },
 } satisfies Record<string, LangDict>

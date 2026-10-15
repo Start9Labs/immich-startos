@@ -18,6 +18,7 @@ import {
   NEXTCLOUD_MOUNTPOINT,
   NEXTEXPLORER_MOUNTPOINT,
   withAdminApiKey,
+  withDependentKeyLock,
 } from './utils'
 
 export const main = sdk.setupMain(async ({ effects }) => {
@@ -165,24 +166,25 @@ export const main = sdk.setupMain(async ({ effects }) => {
       .addOneshot('reconcile-dependent-keys', {
         subcontainer: postgresSub,
         exec: {
-          fn: async () => {
-            const installed = new Set(await sdk.getInstalledPackages(effects))
-            await dropDependentKeys(
-              effects,
-              postgresSub,
-              (k) => !installed.has(k.packageId),
-            )
-            const keyIds = (
-              (await storeJson.read((s) => s.dependentKeys).once()) ?? []
-            ).flatMap((k) => (k.keyId ? [k.keyId] : []))
-            const live = new Set(await existingApiKeyIds(postgresSub, keyIds))
-            await dropDependentKeys(
-              effects,
-              postgresSub,
-              (k) => !!k.keyId && !live.has(k.keyId),
-            )
-            return null
-          },
+          fn: () =>
+            withDependentKeyLock(async () => {
+              const installed = new Set(await sdk.getInstalledPackages(effects))
+              await dropDependentKeys(
+                effects,
+                postgresSub,
+                (k) => !installed.has(k.packageId),
+              )
+              const keyIds = (
+                (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+              ).flatMap((k) => (k.keyId ? [k.keyId] : []))
+              const live = new Set(await existingApiKeyIds(postgresSub, keyIds))
+              await dropDependentKeys(
+                effects,
+                postgresSub,
+                (k) => !!k.keyId && !live.has(k.keyId),
+              )
+              return null
+            }),
         },
         requires: ['immich-server', 'cache-nextcloud-users'],
       })
