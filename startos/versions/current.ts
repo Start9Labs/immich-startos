@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.3.1:2',
+  version: '3.3.3:0',
   releaseNotes: {
     en_US:
-      "Other services can now connect to an Immich account with an API key that can only view that account's library and edit the details of its photos and videos. Such keys are listed under Account Settings → API Keys in Immich, where they can be revoked.",
+      'Updated Immich to 3.3.3. Improves people-query performance on the Explore page and fixes memory dates in the mobile app across languages. Full release notes: https://github.com/immich-app/immich/releases/tag/v3.3.3',
     es_ES:
-      'Otros servicios ahora pueden conectarse a una cuenta de Immich con una clave API que solo puede ver la biblioteca de esa cuenta y editar los detalles de sus fotos y vídeos. Estas claves aparecen en Ajustes de la cuenta → Claves API en Immich, donde se pueden revocar.',
+      'Actualiza Immich a 3.3.3. Mejora el rendimiento de las consultas de personas en la página Explorar y corrige las fechas de los recuerdos en la aplicación móvil en todos los idiomas. Notas completas: https://github.com/immich-app/immich/releases/tag/v3.3.3',
     de_DE:
-      'Andere Dienste können sich jetzt mit einem Immich-Konto verbinden, über einen API-Schlüssel, mit dem sich nur die Mediathek dieses Kontos ansehen und die Details seiner Fotos und Videos bearbeiten lassen. Solche Schlüssel stehen in Immich unter Kontoeinstellungen → API-Schlüssel und lassen sich dort widerrufen.',
+      'Aktualisiert Immich auf 3.3.3. Verbessert die Leistung der Personenabfragen auf der Entdecken-Seite und korrigiert die Datumsanzeige von Erinnerungen in der mobilen App in allen Sprachen. Vollständige Versionshinweise: https://github.com/immich-app/immich/releases/tag/v3.3.3',
     pl_PL:
-      'Inne usługi mogą teraz łączyć się z kontem Immich za pomocą klucza API, który pozwala tylko przeglądać bibliotekę tego konta i edytować szczegóły jego zdjęć i filmów. Takie klucze są widoczne w Immich w Ustawienia konta → Klucze API, gdzie można je unieważnić.',
+      'Aktualizuje Immich do wersji 3.3.3. Poprawia wydajność zapytań o osoby na stronie Odkrywaj i wyświetlanie dat wspomnień w aplikacji mobilnej we wszystkich językach. Pełne informacje o wydaniu: https://github.com/immich-app/immich/releases/tag/v3.3.3',
     fr_FR:
-      "D'autres services peuvent désormais se connecter à un compte Immich avec une clé API qui permet seulement de consulter la bibliothèque de ce compte et de modifier les détails de ses photos et vidéos. Ces clés figurent dans Paramètres du compte → Clés d'API dans Immich, où elles peuvent être révoquées.",
+      "Met à jour Immich vers la version 3.3.3. Améliore les performances des requêtes de personnes sur la page Explorer et corrige les dates des souvenirs dans l'application mobile dans toutes les langues. Notes de version complètes : https://github.com/immich-app/immich/releases/tag/v3.3.3",
   },
   migrations: {
     up: async ({ effects }) => {},
