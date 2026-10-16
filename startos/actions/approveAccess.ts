@@ -34,12 +34,19 @@ async function accountOptions(effects: T.Effects) {
 export const approveAccess = sdk.Action.withInput(
   'approve-access',
 
-  async () => ({
+  async ({ effects }) => ({
     name: i18n('Approve Access'),
     description: i18n(
-      "Let a service read one Immich account's library with the permissions it asked for, or deny its request",
+      "Let a service access one Immich account's library with the permissions it asked for, or deny its request",
     ),
-    warning: null,
+    warning: (
+      (await storeJson.read((s) => s.dependentKeys).const(effects)) ?? []
+    ).some((k) => !k.keyId && k.permissions.includes('asset.update'))
+      ? i18n(
+          'A request marked “${flag}” lets that service change the dates, locations, descriptions, ratings, favourites and other details of any photo or video in the chosen account, and archive or hide them, many at once. Immich cannot undo these changes.',
+          { flag: i18n('can change photos') },
+        )
+      : null,
     allowedStatuses: 'only-running',
     group: null,
     visibility: 'hidden',
@@ -57,12 +64,14 @@ export const approveAccess = sdk.Action.withInput(
         return {
           name: i18n('Request'),
           description: i18n(
-            'The service asking, and what it would be allowed to read',
+            'The service asking, and what it would be allowed to do',
           ),
           values: Object.fromEntries(
             pending.map((k) => [
               accessRequestId(k),
-              `${requesterName(k)}: ${k.permissions.join(', ')}`,
+              k.permissions.includes('asset.update')
+                ? `${requesterName(k)}: ${k.permissions.join(', ')} (${i18n('can change photos')})`
+                : `${requesterName(k)}: ${k.permissions.join(', ')}`,
             ]),
           ),
           default: null,
@@ -81,7 +90,7 @@ export const approveAccess = sdk.Action.withInput(
               user: Value.dynamicSelect(async ({ effects }) => ({
                 name: i18n('Immich Account'),
                 description: i18n(
-                  'The account whose library the service can read',
+                  'The account whose library the service can access',
                 ),
                 values: Object.fromEntries(await accountOptions(effects)),
                 default: null,

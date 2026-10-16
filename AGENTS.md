@@ -37,6 +37,6 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **`cache-nextcloud-users` must stay ordered after `ensure-api-key`.** Both merge into `store.json`, and concurrent merges drop each other's keys.
 - **Keep the AMD GPU match a positive allowlist of discrete families.** StartOS's regex engine has no lookahead, so an iGPU exclusion cannot be expressed, and plain `Radeon` would put `rocm` on Ryzen APU graphics.
 - **The `Makefile`'s `TARGETS`/`ARCHES` overrides and `<variant>-<arch>` leaf rules must stay above the `include` line**, or the release matrix builds nothing.
-- **`dependentKeyPermissions` holds read permissions only.** Any service that depends on Immich can request them, so a write (`asset.update` included) does not belong there.
+- **A write added to `dependentKeyPermissions` must be named in plain words wherever it is approved:** the task reason in `requestAccess.ts`, and the label and warning in `approveAccess.ts`, as `asset.update` is. Any service that depends on Immich can request the list.
 - **Complete Immich's sign-up before testing anything that needs an admin.** Until the first account exists (web sign-up, or `POST /api/auth/admin-sign-up`), `ensure-api-key` no-ops and both library actions fail.
 - **`request-access`'s `label` is display-only.** The service chooses it, so never use it for the key's name, the request id or ownership: only `caller` identifies the service.

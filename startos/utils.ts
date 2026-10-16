@@ -496,6 +496,7 @@ export const dependentKeyPermissions = {
   'album.statistics': 'album.statistics',
   'asset.read': 'asset.read',
   'asset.statistics': 'asset.statistics',
+  'asset.update': 'asset.update',
   'asset.view': 'asset.view',
   'face.read': 'face.read',
   'memory.read': 'memory.read',
