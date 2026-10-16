@@ -86,7 +86,6 @@ const dict = {
   // actions/revokeAccess.ts
   'Revoke Access': 73,
   "Delete the requesting service's API key, or withdraw its pending request": 74,
-  'SHA-256 of the API key, in lowercase hex. Leave empty for every key the service holds.': 75,
   'Only a service can revoke its access': 76,
 
   // primaryUrl.ts

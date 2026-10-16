@@ -1,3 +1,4 @@
+import { z } from '@start9labs/start-sdk'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 import { dropDependentKeys, withDb, withDependentKeyLock } from '../utils'
@@ -20,14 +21,7 @@ export const revokeAccess = sdk.Action.withInput(
   }),
 
   InputSpec.of({
-    keyHash: Value.text({
-      name: i18n('Key Hash'),
-      description: i18n(
-        'SHA-256 of the API key, in lowercase hex. Leave empty for every key the service holds.',
-      ),
-      required: false,
-      default: null,
-    }),
+    keyHash: Value.hidden(z.string().nullish()),
   }),
 
   async () => null,
