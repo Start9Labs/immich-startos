@@ -59,8 +59,6 @@ const dict = {
   'SHA-256 of the API key, in lowercase hex': 55,
   'Must be 64 lowercase hex characters': 56,
   Permissions: 57,
-  Label: 81,
-  'Shown next to the service where the user approves the request, such as the account or person the key is for': 82,
   'At most 64 characters, without angle brackets or control characters': 83,
   'Only a service can request access': 58,
   'Choose at least one permission': 59,

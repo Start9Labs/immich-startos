@@ -1,3 +1,4 @@
+import { z } from '@start9labs/start-sdk'
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
@@ -45,23 +46,17 @@ export const requestAccess = sdk.Action.withInput(
       default: [],
       values: dependentKeyPermissions,
     }),
-    label: Value.text({
-      name: i18n('Label'),
-      description: i18n(
-        'Shown next to the service where the user approves the request, such as the account or person the key is for',
-      ),
-      required: false,
-      default: null,
-      maxLength: 64,
-      patterns: [
-        {
-          regex: '^[^<>\\x00-\\x1f\\x7f]{1,64}$',
-          description: i18n(
+    label: Value.hidden(
+      z
+        .string()
+        .refine(
+          (label) => label.length <= 64 && !/[<>\x00-\x1f\x7f]/.test(label),
+          i18n(
             'At most 64 characters, without angle brackets or control characters',
           ),
-        },
-      ],
-    }),
+        )
+        .nullish(),
+    ),
   }),
 
   async () => null,
