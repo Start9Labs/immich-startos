@@ -5,6 +5,7 @@ import {
   accessRequestId,
   accessTaskId,
   dependentKeyPermissions,
+  requesterName,
   withDependentKeyLock,
 } from '../utils'
 import { approveAccess } from './approveAccess'
@@ -44,6 +45,23 @@ export const requestAccess = sdk.Action.withInput(
       default: [],
       values: dependentKeyPermissions,
     }),
+    label: Value.text({
+      name: i18n('Label'),
+      description: i18n(
+        'Shown next to the service where the user approves the request, such as the account or person the key is for',
+      ),
+      required: false,
+      default: null,
+      maxLength: 64,
+      patterns: [
+        {
+          regex: '^[^<>\\x00-\\x1f\\x7f]{1,64}$',
+          description: i18n(
+            'At most 64 characters, without angle brackets or control characters',
+          ),
+        },
+      ],
+    }),
   }),
 
   async () => null,
@@ -73,6 +91,7 @@ export const requestAccess = sdk.Action.withInput(
         packageId: caller,
         keyHash: input.keyHash,
         permissions: input.permissions,
+        label: input.label?.trim() || null,
         userId: null,
         keyId: null,
       }
@@ -87,7 +106,7 @@ export const requestAccess = sdk.Action.withInput(
       )
       await sdk.action.createOwnTask(effects, approveAccess, 'important', {
         reason: i18n('${packageId} is asking to read an Immich account', {
-          packageId: caller,
+          packageId: requesterName(request),
         }),
         replayId: accessTaskId(requestId),
         when: { condition: 'input-not-matches', once: true },

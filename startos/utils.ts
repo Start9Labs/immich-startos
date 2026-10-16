@@ -512,6 +512,10 @@ export function accessRequestId(
 
 export const accessTaskId = (requestId: string) => `access-request:${requestId}`
 
+export const requesterName = (
+  key: Pick<DependentKey, 'packageId' | 'label'>,
+) => (key.label ? `${key.packageId} (${key.label})` : key.packageId)
+
 let dependentKeyQueue: Promise<void> = Promise.resolve()
 
 export function withDependentKeyLock<R>(

@@ -33,7 +33,7 @@ Saving **Set Primary URL**, **Configure SMTP**, or **Connect Photo Sources** res
 
 When another service requests access to Immich, open the **Approve Access** task in Immich. Review the requesting service and its read permissions, then choose the Immich account it may read or select **Deny**. Permissions are approved together, not individually. If the request changes while the form is open, reopen the task before approving it.
 
-Approved keys appear under **Account Settings → API Keys** in the chosen Immich account, named `StartOS: <service id>`. Revoke a key there to stop its access. Disconnecting from the other service should revoke its key too; if an uninstalled service leaves a key behind, Immich removes it the next time it starts.
+Approved keys appear under **Account Settings → API Keys** in the chosen Immich account, named `StartOS: <service id>`. Revoke a key there to stop its access. An account marked **has a key from** a service is already connected to it, and approving another request from that service for the same account replaces its key. Disconnecting from the other service should revoke its key too; if an uninstalled service leaves a key behind, Immich removes it the next time it starts.
 
 ### External library notes
 

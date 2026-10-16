@@ -5,6 +5,7 @@ const dependentKey = z.looseObject({
   packageId: z.string(),
   keyHash: z.string(),
   permissions: z.array(z.string()),
+  label: z.string().nullish(),
   userId: z.string().nullable(),
   keyId: z.string().nullable(),
 })

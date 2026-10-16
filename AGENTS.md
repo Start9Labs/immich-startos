@@ -39,3 +39,4 @@ verified, tried, and decided belongs in the commit message and the PR body.
 - **The `Makefile`'s `TARGETS`/`ARCHES` overrides and `<variant>-<arch>` leaf rules must stay above the `include` line**, or the release matrix builds nothing.
 - **`dependentKeyPermissions` holds read permissions only.** Any service that depends on Immich can request them, so a write (`asset.update` included) does not belong there.
 - **Complete Immich's sign-up before testing anything that needs an admin.** Until the first account exists (web sign-up, or `POST /api/auth/admin-sign-up`), `ensure-api-key` no-ops and both library actions fail.
+- **`request-access`'s `label` is display-only.** The service chooses it, so never use it for the key's name, the request id or ownership: only `caller` identifies the service.
