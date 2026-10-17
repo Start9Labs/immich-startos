@@ -1,5 +1,6 @@
+import { T } from '@start9labs/start-sdk'
 import { randomUUID } from 'crypto'
-import { storeJson } from '../fileModels/store.json'
+import { DependentKey, storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
 import {
@@ -7,11 +8,28 @@ import {
   dropDependentKeys,
   insertDependentKey,
   listImmichUsers,
+  requesterName,
   withDb,
   withDependentKeyLock,
 } from '../utils'
 
 const { InputSpec, Value, Variants } = sdk
+
+async function accountOptions(effects: T.Effects) {
+  const keys = (
+    (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+  ).filter((k) => k.keyId)
+  return (await withDb(effects, listImmichUsers)).map((u) => {
+    const account = u.name ? `${u.name} (${u.email})` : u.email
+    const holders = keys.filter((k) => k.userId === u.id).map(requesterName)
+    return [
+      u.id,
+      holders.length
+        ? `${account} · ${i18n('has a key from ${services}', { services: holders.join(', ') })}`
+        : account,
+    ] as const
+  })
+}
 
 export const approveAccess = sdk.Action.withInput(
   'approve-access',
@@ -44,7 +62,7 @@ export const approveAccess = sdk.Action.withInput(
           values: Object.fromEntries(
             pending.map((k) => [
               accessRequestId(k),
-              `${k.packageId}: ${k.permissions.join(', ')}`,
+              `${requesterName(k)}: ${k.permissions.join(', ')}`,
             ]),
           ),
           default: null,
@@ -52,6 +70,9 @@ export const approveAccess = sdk.Action.withInput(
       }),
       decision: Value.union({
         name: i18n('Decision'),
+        description: i18n(
+          'If the chosen account already has a key from this service, approving replaces it',
+        ),
         default: 'approve',
         variants: Variants.of({
           approve: {
@@ -62,12 +83,7 @@ export const approveAccess = sdk.Action.withInput(
                 description: i18n(
                   'The account whose library the service can read',
                 ),
-                values: Object.fromEntries(
-                  (await withDb(effects, listImmichUsers)).map((u) => [
-                    u.id,
-                    u.name ? `${u.name} (${u.email})` : u.email,
-                  ]),
-                ),
+                values: Object.fromEntries(await accountOptions(effects)),
                 default: null,
               })),
             }),
@@ -90,7 +106,7 @@ export const approveAccess = sdk.Action.withInput(
       ).find((k) => accessRequestId(k) === input.request && !k.keyId)
       if (!request) throw new Error(i18n('That request is no longer pending'))
 
-      await withDb(effects, async (pgSub, pgEnv) => {
+      const replaced = await withDb(effects, async (pgSub, pgEnv) => {
         if (input.decision.selection === 'deny') {
           await dropDependentKeys(
             effects,
@@ -98,7 +114,7 @@ export const approveAccess = sdk.Action.withInput(
             (k) => accessRequestId(k) === input.request,
             pgEnv,
           )
-          return
+          return false
         }
 
         const userId = input.decision.value.user
@@ -137,19 +153,29 @@ export const approveAccess = sdk.Action.withInput(
           )
         }
 
-        await dropDependentKeys(
-          effects,
-          pgSub,
-          (k) =>
-            k.packageId === request.packageId &&
-            k.userId === userId &&
-            !!k.keyId &&
-            k.keyHash !== request.keyHash,
-          pgEnv,
-        )
+        const replaces = (k: DependentKey) =>
+          k.packageId === request.packageId &&
+          k.userId === userId &&
+          !!k.keyId &&
+          k.keyHash !== request.keyHash
+        const replacing = (
+          (await storeJson.read((s) => s.dependentKeys).once()) ?? []
+        ).some(replaces)
+        await dropDependentKeys(effects, pgSub, replaces, pgEnv)
+        return replacing
       })
 
-      return null
+      return replaced
+        ? {
+            version: '1',
+            title: i18n('Access Approved'),
+            message: i18n(
+              'This replaced the key ${packageId} already had in this account.',
+              { packageId: request.packageId },
+            ),
+            result: null,
+          }
+        : null
     })
   },
 )

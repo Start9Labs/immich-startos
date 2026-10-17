@@ -197,6 +197,10 @@ Creates and removes the Immich libraries that point at those mounted paths.
 
 **The service's identity comes from StartOS**, never from its input, so a service can see and remove only its own keys and requests. `store.json`'s `dependentKeys` records which service owns each. The service learns it was approved when its key starts working, and which account it got from `GET /api/users/me`.
 
+**A request can carry a `label`**, such as the account or person the key is for: at most 64 characters, without angle brackets or control characters. It is display-only, shown after the service's id in the task and the approval form, and never used for the key's name or to identify the service. A repeat of the same key hash keeps the first label.
+
+**The approval form marks each account with the services that already hold a key in it**, because approving replaces the key the requesting service already has in the chosen account. When it does, the result names the service whose key was replaced.
+
 **On every start, Immich revokes the keys and drops the requests of services no longer installed**, and forgets keys you revoked in Immich yourself. Cleanup and access actions share a runtime lock covering both the ownership record and database changes. A key can also be revoked any time under Account Settings → API Keys in its account.
 
 ## Tasks

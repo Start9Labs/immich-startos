@@ -1,3 +1,4 @@
+import { z } from '@start9labs/start-sdk'
 import { storeJson } from '../fileModels/store.json'
 import { i18n } from '../i18n'
 import { sdk } from '../sdk'
@@ -5,6 +6,7 @@ import {
   accessRequestId,
   accessTaskId,
   dependentKeyPermissions,
+  requesterName,
   withDependentKeyLock,
 } from '../utils'
 import { approveAccess } from './approveAccess'
@@ -44,6 +46,17 @@ export const requestAccess = sdk.Action.withInput(
       default: [],
       values: dependentKeyPermissions,
     }),
+    label: Value.hidden(
+      z
+        .string()
+        .refine(
+          (label) => label.length <= 64 && !/[<>\x00-\x1f\x7f]/.test(label),
+          i18n(
+            'At most 64 characters, without angle brackets or control characters',
+          ),
+        )
+        .nullish(),
+    ),
   }),
 
   async () => null,
@@ -73,6 +86,7 @@ export const requestAccess = sdk.Action.withInput(
         packageId: caller,
         keyHash: input.keyHash,
         permissions: input.permissions,
+        label: input.label?.trim() || null,
         userId: null,
         keyId: null,
       }
@@ -87,7 +101,7 @@ export const requestAccess = sdk.Action.withInput(
       )
       await sdk.action.createOwnTask(effects, approveAccess, 'important', {
         reason: i18n('${packageId} is asking to read an Immich account', {
-          packageId: caller,
+          packageId: requesterName(request),
         }),
         replayId: accessTaskId(requestId),
         when: { condition: 'input-not-matches', once: true },
