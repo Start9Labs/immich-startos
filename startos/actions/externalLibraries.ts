@@ -8,6 +8,7 @@ import {
   immichApi,
   NEXTCLOUD_MOUNTPOINT,
   NEXTEXPLORER_MOUNTPOINT,
+  NoAdminError,
 } from '../utils'
 
 const { InputSpec, Value, List, Variants } = sdk
@@ -136,7 +137,7 @@ function parseLibrary(
 
 // `minLength: null` so a freshly-switched variant starts with zero rows —
 // an auto-created row inherits the value of the sibling row it replaced.
-function foldersBox(placeholder = 'e.g. Photos') {
+function foldersBox(placeholder = i18n('e.g. Photos')) {
   return Value.list(
     List.text(
       {
@@ -164,7 +165,7 @@ function foldersBox(placeholder = 'e.g. Photos') {
 
 const nextexplorerVariant = {
   name: i18n('NextExplorer'),
-  spec: InputSpec.of({ folders: foldersBox('e.g. Files/Photos') }),
+  spec: InputSpec.of({ folders: foldersBox(i18n('e.g. Files/Photos')) }),
 }
 
 const filebrowserVariant = {
@@ -274,7 +275,7 @@ export const inputSpec = InputSpec.of({
           name: Value.text({
             name: i18n('Name'),
             description: null,
-            placeholder: 'My Photos',
+            placeholder: i18n('My Photos'),
             required: true,
             default: null,
           }),
@@ -352,9 +353,7 @@ export const externalLibraries = sdk.Action.withInput(
     const submitted = input.externalLibraries || []
 
     const apiKey = await getOrMintApiKey(effects)
-    if (!apiKey) {
-      throw new Error('Immich is not ready yet (no administrator account).')
-    }
+    if (!apiKey) throw new NoAdminError()
 
     const current = await immichApi<ImmichLibrary[]>('/libraries', apiKey)
 
@@ -379,7 +378,7 @@ export const externalLibraries = sdk.Action.withInput(
         } else {
           const ownerId = row.owner
           if (!ownerId) {
-            throw new Error('select an Immich user to own it')
+            throw new Error(i18n('select an Immich user to own it'))
           }
           const created = await immichApi<ImmichLibrary>('/libraries', apiKey, {
             method: 'POST',
@@ -408,7 +407,9 @@ export const externalLibraries = sdk.Action.withInput(
 
     if (failures.length) {
       throw new Error(
-        `Saved, except for these libraries:\n${failures.join('\n')}`,
+        i18n('Saved, except for these libraries:\n${failures}', {
+          failures: failures.join('\n'),
+        }),
       )
     }
 

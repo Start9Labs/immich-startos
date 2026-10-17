@@ -32,6 +32,11 @@ const dict = {
   "Where the photos are. A service appears here once it is turned on in Connect Photo Sources.\n- NextExplorer: folders in NextExplorer\n- FileBrowser Quantum: folders in FileBrowser Quantum\n- Nextcloud: folders in one Nextcloud user's files\n- Custom paths: any other location, as full paths": 47,
   NextExplorer: 48,
   'Full paths inside Immich. Connected sources are under /mnt/nextexplorer, /mnt/filebrowser and /mnt/nextcloud.': 50,
+  'e.g. Photos': 90,
+  'e.g. Files/Photos': 91,
+  'My Photos': 92,
+  'select an Immich user to own it': 93,
+  'Saved, except for these libraries:\n${failures}': 94,
 
   // actions/resetAdminPassword.ts
   'Reset Admin Password': 26,
@@ -95,6 +100,9 @@ const dict = {
 
   // init/primaryUrlTask.ts
   'Primary URL removed. Select a new primary URL.': 34,
+
+  // utils.ts
+  'Immich has no admin account yet. Create one in the Immich web interface first.': 95,
 } as const
 
 /**
