@@ -59,7 +59,7 @@ const dict = {
 
   // actions/requestAccess.ts
   'Request Access': 52,
-  'Ask to read one Immich account with an API key the requesting service generated': 53,
+  'Ask for access to one Immich account with an API key the requesting service generated': 53,
   'Key Hash': 54,
   'SHA-256 of the API key, in lowercase hex': 55,
   'Must be 64 lowercase hex characters': 56,
@@ -69,12 +69,13 @@ const dict = {
   'Choose at least one permission': 59,
   'This key was already requested': 60,
   '${packageId} is asking to read an Immich account': 61,
+  '${packageId} is asking to read and change photos in an Immich account': 78,
 
   // actions/approveAccess.ts
   'Approve Access': 62,
-  "Let a service read one Immich account's library with the permissions it asked for, or deny its request": 63,
+  "Let a service access one Immich account's library with the permissions it asked for, or deny its request": 63,
   Request: 64,
-  'The service asking, and what it would be allowed to read': 65,
+  'The service asking, and what it would be allowed to do': 65,
   Decision: 66,
   'If the chosen account already has a key from this service, approving replaces it': 84,
   'has a key from ${services}': 85,
@@ -82,11 +83,13 @@ const dict = {
   'This replaced the key ${packageId} already had in this account.': 87,
   Approve: 67,
   'Immich Account': 68,
-  'The account whose library the service can read': 69,
+  'The account whose library the service can access': 69,
   Deny: 70,
   'That request is no longer pending': 71,
   'Only the user can approve access': 77,
   'No Immich account has the ID ${userId}, or it was deleted': 72,
+  'can change photos': 79,
+  'A request marked “${flag}” lets that service change the dates, locations, descriptions, ratings, favourites and other details of any photo or video in the chosen account, and archive or hide them, many at once. Immich cannot undo these changes.': 80,
 
   // actions/revokeAccess.ts
   'Revoke Access': 73,

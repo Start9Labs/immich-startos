@@ -137,7 +137,7 @@ When no primary URL is stored, init stores the preferred address: a public domai
 
 ## Actions
 
-Eight actions: five you run, in two groups, and three hidden ones that let other services read an Immich account.
+Eight actions: five you run, in two groups, and three hidden ones that let other services use an Immich account once you approve.
 
 ### Set Primary URL
 
@@ -189,10 +189,10 @@ Creates and removes the Immich libraries that point at those mounted paths.
 
 ### Connecting other services (hidden)
 
-**A service that depends on Immich reads an account only after you approve it.** It generates its own API key and sends only the key's SHA-256; Immich never holds a usable secret.
+**A service that depends on Immich uses an account only after you approve it.** It generates its own API key and sends only the key's SHA-256; Immich never holds a usable secret.
 
-- **Request Access** (`request-access`), run by the service: the key's hash and the permissions it needs, from `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics`, `tag.read` and `user.read`. Nothing that changes, uploads, downloads, deletes or shares is grantable. It raises an `important` task; a repeat of the same request is a no-op. Runs in any state.
-- **Approve Access** (`approve-access`), run by you from that task: shows the service and the permissions it asked for, read-only, and you choose the account or deny. Approval inserts the key into Immich's `api_key` table — Immich's API creates keys only for the account calling it — named `StartOS: <service id>` in that account's API Keys list. It replaces any key the same service already holds for the same account. Only you can open its form or run it; no service can approve its own request. Approval is bound to the service, key hash and permissions shown when the form opened; a replacement request with different permissions requires opening a new form. Only while running.
+- **Request Access** (`request-access`), run by the service: the key's hash and the permissions it needs, from `album.read`, `album.statistics`, `asset.read`, `asset.statistics`, `asset.update`, `asset.view`, `face.read`, `memory.read`, `person.read`, `person.statistics`, `tag.read` and `user.read`. `asset.update` is the one write, requested only when the service's user opts in: it lets the key change the date, location, description, rating, favourite and other details of any photo or video in the account, and archive or hide them, many at once, which Immich cannot undo. Nothing that uploads, downloads, deletes or shares is grantable. It raises an `important` task, whose reason says when the request would change photos; a repeat of the same request is a no-op. Runs in any state.
+- **Approve Access** (`approve-access`), run by you from that task: shows the service and the permissions it asked for, read-only, and you choose the account or deny. A request that includes `asset.update` is marked "can change photos", and while one is pending the form opens with a warning that spells out what it allows. Approval inserts the key into Immich's `api_key` table — Immich's API creates keys only for the account calling it — named `StartOS: <service id>` in that account's API Keys list. It replaces any key the same service already holds for the same account. Only you can open its form or run it; no service can approve its own request. Approval is bound to the service, key hash and permissions shown when the form opened; a replacement request with different permissions requires opening a new form. Only while running.
 - **Revoke Access** (`revoke-access`), run by the service: deletes one of its keys or withdraws one of its requests, by hash, or all of them with no hash. Idempotent. Only while running.
 
 **The service's identity comes from StartOS**, never from its input, so a service can see and remove only its own keys and requests. `store.json`'s `dependentKeys` records which service owns each. The service learns it was approved when its key starts working, and which account it got from `GET /api/users/me`.
@@ -256,6 +256,7 @@ Mixed, and the exclusion is the important part.
 8. **A library's owner cannot be changed** after it is created.
 9. **Choosing "disabled" SMTP does not clear Immich's existing credentials.**
 10. **A service you uninstall keeps its key until Immich next starts**, unless it revokes the key itself.
+11. **Edits to an external-library photo's date, location, description or rating don't last**, whether made in Immich or by a service with `asset.update`. Immich keeps an edit in a sidecar file beside the photo, which fails on the read-only mount without failing the job, so the metadata re-read that follows restores the original's values within seconds. Photos in Immich's own library keep their edits.
 
 ---
 

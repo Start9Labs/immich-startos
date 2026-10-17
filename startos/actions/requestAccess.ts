@@ -19,7 +19,7 @@ export const requestAccess = sdk.Action.withInput(
   async () => ({
     name: i18n('Request Access'),
     description: i18n(
-      'Ask to read one Immich account with an API key the requesting service generated',
+      'Ask for access to one Immich account with an API key the requesting service generated',
     ),
     warning: null,
     allowedStatuses: 'any',
@@ -100,9 +100,14 @@ export const requestAccess = sdk.Action.withInput(
           },
       )
       await sdk.action.createOwnTask(effects, approveAccess, 'important', {
-        reason: i18n('${packageId} is asking to read an Immich account', {
-          packageId: requesterName(request),
-        }),
+        reason: input.permissions.includes('asset.update')
+          ? i18n(
+              '${packageId} is asking to read and change photos in an Immich account',
+              { packageId: requesterName(request) },
+            )
+          : i18n('${packageId} is asking to read an Immich account', {
+              packageId: requesterName(request),
+            }),
         replayId: accessTaskId(requestId),
         when: { condition: 'input-not-matches', once: true },
         input: {

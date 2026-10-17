@@ -1,18 +1,18 @@
 import { IMPOSSIBLE, VersionInfo } from '@start9labs/start-sdk'
 
 export const current = VersionInfo.of({
-  version: '3.3.3:2',
+  version: '3.3.3:3',
   releaseNotes: {
     en_US:
-      "Access requests can now carry a label identifying the account or person they are for. Approval shows which services already hold keys in each account, warns that approving replaces that service's existing key, and reports replacements. Error messages and form examples in Immich's actions are now translated.",
+      'A service can now ask to change photo details such as locations, and both the task and the approval form say so.',
     es_ES:
-      'Las solicitudes de acceso ahora pueden llevar una etiqueta que identifique la cuenta o la persona para la que son. La aprobación muestra qué servicios ya tienen claves en cada cuenta, advierte de que aprobar sustituye la clave existente de ese servicio e informa de las sustituciones. Los mensajes de error y los ejemplos de los formularios de las acciones de Immich ahora están traducidos.',
+      'Un servicio ahora puede solicitar cambiar detalles de las fotos, como las ubicaciones, y tanto la tarea como el formulario de aprobación lo indican.',
     de_DE:
-      'Zugriffsanfragen können jetzt eine Bezeichnung für das betreffende Konto oder die Person tragen. Die Genehmigung zeigt, welche Dienste bereits Schlüssel in jedem Konto haben, warnt vor dem Ersetzen des vorhandenen Schlüssels dieses Dienstes und meldet Ersetzungen. Fehlermeldungen und Formularbeispiele in den Aktionen von Immich sind jetzt übersetzt.',
+      'Ein Dienst kann jetzt anfragen, Fotodetails wie Orte zu ändern; sowohl die Aufgabe als auch das Genehmigungsformular weisen darauf hin.',
     pl_PL:
-      'Prośby o dostęp mogą teraz zawierać etykietę wskazującą konto lub osobę, dla której są przeznaczone. Formularz zatwierdzania pokazuje, które usługi mają już klucze na każdym koncie, ostrzega, że zatwierdzenie zastępuje istniejący klucz tej usługi, i informuje o zastąpieniu. Komunikaty o błędach i przykłady w formularzach akcji Immich są teraz przetłumaczone.',
+      'Usługa może teraz poprosić o zmianę szczegółów zdjęć, takich jak lokalizacje, a zarówno zadanie, jak i formularz zatwierdzenia to wskazują.',
     fr_FR:
-      "Les demandes d'accès peuvent désormais porter un libellé identifiant le compte ou la personne concernés. Le formulaire d'approbation indique quels services possèdent déjà des clés dans chaque compte, avertit que l'approbation remplace la clé existante de ce service et signale les remplacements. Les messages d'erreur et les exemples de formulaire des actions d'Immich sont désormais traduits.",
+      "Un service peut désormais demander à modifier des détails des photos, comme les lieux ; la tâche et le formulaire d'approbation l'indiquent tous deux.",
   },
   migrations: {
     up: async ({ effects }) => {},

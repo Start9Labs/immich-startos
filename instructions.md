@@ -31,7 +31,7 @@ Saving **Set Primary URL**, **Configure SMTP**, or **Connect Photo Sources** res
 
 ### Connecting other services
 
-When another service requests access to Immich, open the **Approve Access** task in Immich. Review the requesting service and its read permissions, then choose the Immich account it may read or select **Deny**. Permissions are approved together, not individually. If the request changes while the form is open, reopen the task before approving it.
+When another service requests access to Immich, open the **Approve Access** task in Immich. Review the requesting service and its permissions, then choose the Immich account it may use or select **Deny**. A request marked **can change photos** also lets the service change the dates, locations and other details of any photo or video in that account, and archive or hide them, which Immich cannot undo. Permissions are approved together, not individually. If the request changes while the form is open, reopen the task before approving it.
 
 Approved keys appear under **Account Settings → API Keys** in the chosen Immich account, named `StartOS: <service id>`. Revoke a key there to stop its access. An account marked **has a key from** a service is already connected to it, and approving another request from that service for the same account replaces its key. Disconnecting from the other service should revoke its key too; if an uninstalled service leaves a key behind, Immich removes it the next time it starts.
 
@@ -40,6 +40,8 @@ Approved keys appear under **Account Settings → API Keys** in the chosen Immic
 External libraries managed from StartOS can only be sourced from NextExplorer, FileBrowser Quantum or Nextcloud — for anything else, use Immich's own library settings. Connecting a source makes that service's whole volume readable by every Immich administrator, so only connect sources you're comfortable exposing to your Immich admins. Manage External Libraries and Immich's own library settings are two views of the same libraries, so a change in either place shows up in the other; removing a library from the StartOS action deletes it from Immich outright.
 
 If you turn a source off in Connect Photo Sources while a library still points at it, that library's folders stop existing and Immich rejects them. Your other changes are still saved — the error afterwards names just the libraries that could not be. Either turn the source back on, or remove the stale library's row.
+
+Changing a photo's date, location, description or rating only lasts for photos you uploaded to Immich. For a photo in an external library, Immich puts the original values back within seconds, because it cannot save changes next to files that StartOS shares with it read-only.
 
 ### Things StartOS manages for you
 
