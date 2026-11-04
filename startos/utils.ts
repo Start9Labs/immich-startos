@@ -257,6 +257,7 @@ export async function hasAdmin(
 /**
  * Upserts the StartOS-enforced defaults into `system_metadata[system-config]`
  * via direct DB write. No admin and no running API are required.
+ * The `/system-config` API needs an admin key, and `IMMICH_CONFIG_FILE` would lock the admin UI.
  *
  * On a fresh install the `system_metadata` table is created by Immich's
  * `InitialMigration`, which runs during `immich-server` startup — so on the
