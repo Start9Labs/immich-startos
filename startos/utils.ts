@@ -153,7 +153,7 @@ export function buildCoreDaemons(
           ])
           return exitCode === 0
             ? { result: 'success', message: null }
-            : { result: 'failure', message: null }
+            : { result: 'failure', message: '' }
         },
       },
       requires: [],
