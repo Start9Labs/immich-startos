@@ -37,7 +37,7 @@ Approved keys appear under **Account Settings → API Keys** in the chosen Immic
 
 ### External library notes
 
-External libraries managed from StartOS can only be sourced from NextExplorer, FileBrowser Quantum or Nextcloud — for anything else, use Immich's own library settings. Connecting a source makes that service's whole volume readable by every Immich administrator, so only connect sources you're comfortable exposing to your Immich admins. Manage External Libraries and Immich's own library settings are two views of the same libraries, so a change in either place shows up in the other; removing a library from the StartOS action deletes it from Immich outright.
+External libraries managed from StartOS can only be sourced from NextExplorer, FileBrowser Quantum or Nextcloud — for anything else, use Immich's own library settings. Connecting a source makes that service's files readable by every Immich administrator — for Nextcloud, every user's files, but not its configuration — so only connect sources you're comfortable exposing to your Immich admins. Manage External Libraries and Immich's own library settings are two views of the same libraries, so a change in either place shows up in the other; removing a library from the StartOS action deletes it from Immich outright.
 
 If you turn a source off in Connect Photo Sources while a library still points at it, that library's folders stop existing and Immich rejects them. Your other changes are still saved — the error afterwards names just the libraries that could not be. Either turn the source back on, or remove the stale library's row.
 

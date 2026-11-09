@@ -68,7 +68,7 @@ Four volumes, and the split matters for what a backup costs.
 | `model-cache` | `/cache` (immich-ml)             | Downloaded ML models                                     |
 | `startos`     | — (host side)                    | `store.json`; never mounted into a container             |
 
-An external library's source volume is additionally mounted into the **server** container, **read-only** — NextExplorer's at `/mnt/nextexplorer`, FileBrowser Quantum's at `/mnt/filebrowser`, Nextcloud's at `/mnt/nextcloud`. Immich indexes those files in place; it never copies them onto the `upload` volume, and it cannot modify them.
+An external library's source volume is additionally mounted into the **server** container, **read-only** — NextExplorer's at `/mnt/nextexplorer`, FileBrowser Quantum's at `/mnt/filebrowser`, Nextcloud's user files (its `data` directory, not its configuration or apps) at `/mnt/nextcloud/data`. Immich indexes those files in place; it never copies them onto the `upload` volume, and it cannot modify them.
 
 ## File Models
 
@@ -295,7 +295,7 @@ startos_managed_env_vars:
 dependencies: # all optional, exists; declared only while switched on as a photo source
   - nextexplorer # /mnt/nextexplorer, read-only
   - filebrowser # /mnt/filebrowser, read-only
-  - nextcloud # /mnt/nextcloud, read-only
+  - nextcloud # data subpath only, at /mnt/nextcloud/data, read-only
 interfaces:
   ui: { type: ui, port: 2283 }
 actions:
