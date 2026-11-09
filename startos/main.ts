@@ -1,4 +1,4 @@
-import { manifest as filebrowserManifest } from 'filebrowser-startos/startos/manifest'
+import { manifest as filebrowserManifest } from 'filebrowser-quantum-startos/startos/manifest'
 import { manifest as nextcloudManifest } from 'nextcloud-startos/startos/manifest'
 import { manifest as nextexplorerManifest } from 'nextexplorer-startos/startos/manifest'
 import { storeJson } from './fileModels/store.json'

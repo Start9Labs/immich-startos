@@ -107,11 +107,11 @@ Everything else Immich exposes is yours, edited in its own admin UI. The package
 
 Three, all optional, and each declared only while it is switched on as a photo source.
 
-| Dependency     | Kind     | Version       | Required when                               |
-| -------------- | -------- | ------------- | ------------------------------------------- |
-| `nextexplorer` | `exists` | `>=2.2.7:0`   | NextExplorer is on as a photo source        |
-| `filebrowser`  | `exists` | `>=2.63.18:3` | FileBrowser Quantum is on as a photo source |
-| `nextcloud`    | `exists` | `>=33.0.6:1`  | Nextcloud is on as a photo source           |
+| Dependency     | Kind     | Version                     | Required when                               |
+| -------------- | -------- | --------------------------- | ------------------------------------------- |
+| `nextexplorer` | `exists` | `>=2.2.7:0`                 | NextExplorer is on as a photo source        |
+| `filebrowser`  | `exists` | `>=#quantum:2.0.2-stable:3` | FileBrowser Quantum is on as a photo source |
+| `nextcloud`    | `exists` | `>=33.0.6:1`                | Nextcloud is on as a photo source           |
 
 Every source volume is mounted read-only. NextExplorer's volume root holds one directory per drive, so its folders start with the drive name (`Files/Photos`). `exists` rather than `running`, because Immich reads the files off the volume and does not need the other service up.
 
