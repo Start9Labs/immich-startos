@@ -6,7 +6,7 @@ const variant = process.env.VARIANT || 'generic'
 type Mutable<T> = { -readonly [K in keyof T]: Mutable<T[K]> }
 const mutable = <T>(value: T): Mutable<T> => value as Mutable<T>
 
-const IMMICH_VERSION = 'v3.4.0'
+const IMMICH_VERSION = 'v3.4.1'
 
 const mlImageConfigs = {
   generic: {
