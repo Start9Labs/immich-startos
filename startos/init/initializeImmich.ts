@@ -33,7 +33,7 @@ export const initializeImmich = sdk.setupOnInit(async (effects, kind) => {
       subcontainer: subs.postgresSub,
       exec: {
         fn: async () => {
-          await enforceSystemConfigDefaults(subs.postgresSub)
+          await enforceSystemConfigDefaults(subs.postgresSub, 'install')
           return null
         },
       },

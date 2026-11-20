@@ -92,16 +92,18 @@ One model, and **Immich's own configuration is not a file** — it lives in the 
 
 ### Settings written straight to the database
 
-Immich reads its configuration once at bootstrap, out of `system_metadata`. Two settings are held off by writing that row **directly in PostgreSQL** rather than through Immich's API:
+Immich reads its configuration once at bootstrap, out of `system_metadata`. Two settings are turned off by writing that row **directly in PostgreSQL** rather than through Immich's API:
 
-| Setting           | Held | Why                                                                                                    |
-| ----------------- | ---- | ------------------------------------------------------------------------------------------------------ |
-| `newVersionCheck` | off  | Updates arrive as StartOS package versions, not from upstream                                          |
-| `backup.database` | off  | StartOS takes the database dump; Immich's own dumps would duplicate it onto the volume being backed up |
+| Setting           | Written           | Why                                                                                                    |
+| ----------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
+| `newVersionCheck` | off, every start  | Updates arrive as StartOS package versions, not from upstream                                          |
+| `backup.database` | off, install only | StartOS takes the database dump; Immich's own dumps would duplicate it onto the volume being backed up |
+
+**Database dumps are the admin's to turn back on**, under Administration → Settings → Backup Settings, and the package leaves that choice alone. Immich writes them to the `upload` volume, so they ride along in every StartOS backup. In exchange they give nightly restore points and a database-only restore from Immich's own Maintenance page.
 
 **The direct write exists because the API cannot be used yet.** Immich's config endpoint is admin-key-gated, and on a fresh install there is no admin until you complete sign-up — so a write through the API could never run before Immich first reads its config. The trade-off is that this bypasses the update API and depends on the schema staying stable, which is why a version bump has a checklist attached.
 
-Everything else Immich exposes is yours, edited in its own admin UI. The package re-asserts only the two above, plus the external domain and SMTP when you have set them.
+Everything else Immich exposes is yours, edited in its own admin UI. On every start the package re-asserts only `newVersionCheck`, plus the external domain and SMTP when you have set them.
 
 ## Dependencies
 
@@ -249,7 +251,7 @@ Mixed, and the exclusion is the important part.
 1. **The variant is chosen by StartOS, not by you**, from the machine's hardware — and only the ML image varies.
 2. **Integrated AMD GPUs fall back to the CPU build** rather than attempting ROCm.
 3. **Only `generic` builds for aarch64.** All three accelerator variants are x86_64.
-4. **Immich's version check and its own database backups are held off**, written directly into the database rather than through its API.
+4. **Immich's version check is held off, and its own database dumps start off**, both written directly into the database rather than through its API. Dumps can be turned back on in Immich's admin UI.
 5. **The first account created is the administrator**, and no credential is generated for you.
 6. **Several package features do nothing until sign-up is complete** — the API key, external domain, and SMTP all need an admin to exist.
 7. **External library files are read-only and never copied**, so they are not in this package's backup.

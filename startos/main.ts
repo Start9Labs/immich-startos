@@ -120,7 +120,7 @@ export const main = sdk.setupMain(async ({ effects }) => {
         subcontainer: postgresSub,
         exec: {
           fn: async () => {
-            await enforceSystemConfigDefaults(postgresSub)
+            await enforceSystemConfigDefaults(postgresSub, 'start')
             return null
           },
         },

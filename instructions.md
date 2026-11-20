@@ -48,7 +48,8 @@ Changing a photo's date, location, description or rating only lasts for photos y
 A few Immich settings are reasserted by StartOS on every start and cannot be changed from the Immich admin UI:
 
 - The "new version available" banner is suppressed — StartOS manages Immich updates.
-- Immich's own scheduled database dump is disabled — StartOS already captures the database with `pg_dump` as part of its backup flow.
 - The external domain is set from the **Set Primary URL** action above.
 
 All other Immich settings — users, storage templates, machine-learning tuning, job queues, jobs, sharing — are configured normally from inside the Immich admin UI.
+
+Immich's own scheduled database dumps start off, because StartOS backups already include the database. You can turn them on under **Administration → Settings → Backup Settings** if you want nightly restore points you can restore from Immich's Maintenance page. The dumps are stored with your photos, so they also make StartOS backups larger.
