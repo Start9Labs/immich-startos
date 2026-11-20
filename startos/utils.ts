@@ -255,22 +255,23 @@ export async function hasAdmin(
 }
 
 /**
- * Upserts the StartOS-enforced defaults into `system_metadata[system-config]`
- * via direct DB write. No admin and no running API are required.
+ * Upserts StartOS's defaults into `system_metadata[system-config]` via direct
+ * DB write. No admin and no running API are required.
  * The `/system-config` API needs an admin key, and `IMMICH_CONFIG_FILE` would lock the admin UI.
  *
- * On a fresh install the `system_metadata` table is created by Immich's
- * `InitialMigration`, which runs during `immich-server` startup — so on the
- * first startup this is called before the table exists. We no-op in that
- * case: the row gets written on the next `main` execution (typically the
- * next restart), and Immich picks up the values on that same boot since it
- * only reads config at bootstrap.
+ * `newVersionCheck` is reasserted on every start. `backup.database` is the
+ * admin's to turn back on, so only `install` writes it.
+ *
+ * No-ops while `system_metadata` doesn't exist yet: Immich's `InitialMigration`
+ * creates it during `immich-server` startup, which is why install runs the full
+ * stack before calling this.
  *
  * This bypasses Immich's update API and depends on its schema staying stable,
  * so re-verify the system_metadata shape on every upstream version bump.
  */
 export async function enforceSystemConfigDefaults(
   pgSub: PgExecSub,
+  kind: 'install' | 'start',
   pgEnv?: Record<string, string>,
 ): Promise<void> {
   const tableCheck = await pgSub.execFail(
@@ -279,23 +280,30 @@ export async function enforceSystemConfigDefaults(
   )
   if (tableCheck.stdout.toString().trim() === '') return
 
+  const initial =
+    kind === 'install'
+      ? '{"newVersionCheck":{"enabled":false},"backup":{"database":{"enabled":false}}}'
+      : '{"newVersionCheck":{"enabled":false}}'
+
   // Shallow-merge at each level preserves unrelated sibling keys that the
   // user (or Immich itself) may have written.
-  const sql = `
-    INSERT INTO system_metadata (key, value)
-    VALUES (
-      'system-config',
-      '{"newVersionCheck":{"enabled":false},"backup":{"database":{"enabled":false}}}'::jsonb
-    )
-    ON CONFLICT (key) DO UPDATE SET value = system_metadata.value
-      || jsonb_build_object('newVersionCheck',
-           COALESCE(system_metadata.value->'newVersionCheck', '{}'::jsonb)
-           || '{"enabled":false}'::jsonb)
+  const backupMerge =
+    kind === 'install'
+      ? `
       || jsonb_build_object('backup',
            COALESCE(system_metadata.value->'backup', '{}'::jsonb)
            || jsonb_build_object('database',
                 COALESCE(system_metadata.value->'backup'->'database', '{}'::jsonb)
-                || '{"enabled":false}'::jsonb))
+                || '{"enabled":false}'::jsonb))`
+      : ''
+
+  const sql = `
+    INSERT INTO system_metadata (key, value)
+    VALUES ('system-config', '${initial}'::jsonb)
+    ON CONFLICT (key) DO UPDATE SET value = system_metadata.value
+      || jsonb_build_object('newVersionCheck',
+           COALESCE(system_metadata.value->'newVersionCheck', '{}'::jsonb)
+           || '{"enabled":false}'::jsonb)${backupMerge}
   `
   await pgSub.execFail(psqlCmd(sql), pgEnv ? { env: pgEnv } : undefined)
 }
