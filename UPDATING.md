@@ -41,7 +41,7 @@ GitHub: <https://github.com/valkey-io/valkey>
 gh release view -R valkey-io/valkey --json tagName -q .tagName
 ```
 
-To confirm the major-tag flavor (e.g. `9-alpine`) is actually published on Docker Hub:
+Pin the newest exact `9.<minor>.<patch>-alpine` tag. To confirm it is published on Docker Hub:
 
 ```sh
 curl -fsSL "https://hub.docker.com/v2/repositories/valkey/valkey/tags?page_size=20&ordering=last_updated" | jq -r '.results[].name'

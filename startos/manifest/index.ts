@@ -137,7 +137,7 @@ export const manifest = setupManifest({
     },
     valkey: {
       source: {
-        dockerTag: 'valkey/valkey:9-alpine',
+        dockerTag: 'valkey/valkey:9.2.0-alpine',
       },
       arch: ['x86_64', 'aarch64'],
       emulateMissing: false,

@@ -160,7 +160,16 @@ export function buildCoreDaemons(
     })
     .addDaemon('valkey', {
       subcontainer: subs.valkeySub,
-      exec: { command: 'valkey-server' },
+      exec: {
+        command: [
+          'valkey-server',
+          '--bind',
+          '127.0.0.1',
+          '-::1',
+          '--protected-mode',
+          'yes',
+        ],
+      },
       ready: {
         display: null,
         fn: async () => {
